@@ -16,6 +16,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 COMMANDS_TEXT = """Мне доступны следующие команды:
 /change_lang - изменить язык
 /register - зарегистрироваться
+/change_info - изменить информацию о себе
 /create_app - составить маршрутный лист
 /create_org_app - составить маршрутый на организацию
 /help - как работать с этим чат ботом

@@ -3,7 +3,7 @@ import logging
 from telegram import ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Filters
 
-from db_operations import save_or_update_user_information
+from db_operations import save_or_update_user_information, user_exists_in_users
 from registration_form import RegistrationForm
 from settings import USER_DATA_REGISTRATION_FORM
 
@@ -16,8 +16,12 @@ class RegistrationFlow:
 
 
 def start_registration(update, context):
-    update.message.reply_text(
-        'Вы начали процесс регистрации. Для отмены используйте команду /cancel.\nПожалуйста введите вашу фамилию.')
+    if user_exists_in_users(str(update.message.from_user.id)):
+        update.message.reply_text(
+            'Вы начали процесс изменения своих данных. Для отмены используйте команду /cancel.\nПожалуйста введите вашу фамилию.')
+    else:
+        update.message.reply_text(
+            'Вы начали процесс регистрации. Для отмены используйте команду /cancel.\nПожалуйста введите вашу фамилию.')
 
     return RegistrationFlow.FAMILY_NAME
 
@@ -71,7 +75,7 @@ def phone_number(update, context):
 
     logging.info("Phone number of %s (id = %s): %s", user.first_name, user.id, user_phone_number)
     update.message.reply_text(
-        'Отлично, Ваша регистрация завершена! Теперь Вы можете создать заявку через команду /create_app', )
+        'Отлично, всё готово! Теперь Вы можете создавать заявки через команду /create_app и /create_org_app', )
     context.user_data[USER_DATA_REGISTRATION_FORM].phone_number = user_phone_number
     context.user_data[USER_DATA_REGISTRATION_FORM].user_id = str(update.message.from_user.id)
     logging.info(context.user_data[USER_DATA_REGISTRATION_FORM])
@@ -81,16 +85,21 @@ def phone_number(update, context):
 
 
 def cancel(update, context):
-    update.message.reply_text(
-        'Вы прервали регистрацию. Пока Вы не заполните все данные, Вы не сможете заполнять заявки. Начать регистрацию можно через команду /register',
-        reply_markup=ReplyKeyboardRemove())
+    if user_exists_in_users(str(update.message.from_user.id)):
+        update.message.reply_text(
+            'Вы прервали процесс изменения своих данных. Запустить его снова можно через команду /register',
+            reply_markup=ReplyKeyboardRemove())
+    else:
+        update.message.reply_text(
+            'Вы прервали регистрацию. Пока Вы не заполните все данные, Вы не сможете заполнять заявки. Начать регистрацию можно через команду /change_info',
+            reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
-
 
 
 def get_registration_conversation_handler():
     return ConversationHandler(
-        entry_points=[CommandHandler('register', start_registration), ],
+        entry_points=[CommandHandler('register', start_registration),
+                      CommandHandler('change_info', start_registration)],
         states={
             RegistrationFlow.FAMILY_NAME: [MessageHandler(Filters.text, family_name)],
             RegistrationFlow.GIVEN_NAME: [MessageHandler(Filters.text, given_name)],
