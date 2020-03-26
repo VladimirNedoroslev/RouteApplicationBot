@@ -13,3 +13,13 @@ TELEGRAM_BOT_TOKEN = '1064566811:AAHsSkqPK7Sc4G8xUJursc099BO2YH52pdA'
 USER_DATA_REGISTRATION_FORM = 'registration_form'
 USER_DATA_APPLICATION_FORM = 'application_form'
 USER_DATA_APPLICATION_ORGANIZATION_FORM = 'application_organization_form'
+
+REASONS = [["Перевозка лекарственных средств"],
+           ["Оказание медицинских услуг"],
+           ["Перевозка товаров первой необходимости"],
+           ["Транспортировка граждан"],
+           ["Осуществление охранных функций"],
+           ["Коммунальные услуги"],
+           ["Личные дела"],
+           ["Другое"],
+           ]

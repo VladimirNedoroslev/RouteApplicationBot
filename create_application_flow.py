@@ -9,7 +9,7 @@ from telegram import ParseMode, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Filters
 
 from db_operations import user_exists_in_users
-from settings import USER_DATA_APPLICATION_FORM, TELEGRAM_BOT_TOKEN
+from settings import USER_DATA_APPLICATION_FORM, TELEGRAM_BOT_TOKEN, REASONS
 
 
 class ApplicationForm:
@@ -17,10 +17,10 @@ class ApplicationForm:
     def __init__(self):
         self.user_id = None
         self.reason = None
-        self.start_time = None
-        self.end_time = None
         self.start_location = None
         self.destination = None
+        self.start_time = None
+        self.end_time = None
 
     def is_complete(self) -> bool:
         return all([self.user_id, self.reason, self.start_time, self.end_time, self.start_location,
@@ -56,21 +56,24 @@ def create_application(update, context):
         user = update.message.from_user
         logging.info("User %s (id = %s) has started a new application", user, user.id)
         update.message.reply_text(
-            'Вы начали создание заявки. Опишите кратко причину выхода. Для отмены используйте команду /cancel')
+            'Вы начали создание заявки. Выберите причину выхода. Для отмены используйте команду /cancel',
+            reply_markup=ReplyKeyboardMarkup(REASONS))
 
         context.user_data[USER_DATA_APPLICATION_FORM] = ApplicationForm()
         return REASON
 
 
 def application_reason(update, context):
-    if update.message.text == '/cancel':
+    message_text = update.message.text
+    if message_text == '/cancel':
         return cancel(update, context)
     user = update.message.from_user
-    context.user_data[USER_DATA_APPLICATION_FORM].reason = update.message.text
-    logging.info("Reason of %s (id = %s): %s", user.first_name, user.id, update.message.text)
+    context.user_data[USER_DATA_APPLICATION_FORM].reason = message_text
+    logging.info("Reason of %s (id = %s): %s", user.first_name, user.id, message_text)
 
     update.message.reply_text(
-        'Укажите геолокацию, где Вы находитесь. (Нажмите на скрепку, выберите "Геолокация" и укажите на карте Ваше местоположение)', )
+        'Укажите геолокацию, где Вы находитесь. (Нажмите на скрепку, выберите "Геолокация" и укажите на карте Ваше местоположение)',
+        reply_markup=ReplyKeyboardRemove())
     return START_LOCATION
 
 
@@ -143,8 +146,7 @@ def application_end_time(update, context):
 def check_application(update, context):
     if update.message.text.lower() == 'да':
         update.message.reply_text('Ваша заявка создана. Ваш QR-код:',
-                                  reply_markup=ReplyKeyboardRemove()
-                                  )
+                                  reply_markup=ReplyKeyboardRemove())
         context.user_data[USER_DATA_APPLICATION_FORM].user_id = str(update.message.from_user.id)
         # save_application(context.user_data[USER_DATA_APPLICATION_FORM])
 
