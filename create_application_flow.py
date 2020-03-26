@@ -55,7 +55,8 @@ def create_application(update, context):
         user = update.message.from_user
         logging.info("User %s (id = %s) has started a new application", user, user.id)
         update.message.reply_text(
-            'Вы начали составление маршрутного листа. Выберите причину выхода. Для отмены используйте команду /cancel',
+             'Вы начали составление маршрутного листа. Выберите причину выхода. Если Вашей причины нет в списке, '
+            'то укажите её самостоятельно. Для отмены используйте команду /cancel',
             reply_markup=ReplyKeyboardMarkup(REASONS))
 
         context.user_data[USER_DATA_APPLICATION_FORM] = ApplicationForm()
@@ -115,7 +116,8 @@ def application_start_time(update, context):
             parse_mode=ParseMode.HTML)
         return END_TIME
     except ValueError as exception:
-        update.message.reply_text('Вы ввели неверное время. Попробуйте ещё раз.')
+        update.message.reply_text('Пожалуйста укажите время в формате ЧЧ.ММ (например <b>23.45</b> или <b>15.20</b>)',
+                                  parse_mode=ParseMode.HTML)
         return START_TIME
 
 
@@ -150,7 +152,8 @@ def application_end_time(update, context):
         update.message.reply_text('Всё ли верно? (да/нет)')
         return CHECK_APPLICATION
     except ValueError as exception:
-        update.message.reply_text('Вы ввели неверное время. Попробуйте ещё раз.')
+        update.message.reply_text('Пожалуйста укажите время в формате ЧЧ.ММ (например <b>23.45</b> или <b>15.20</b>)',
+                                  parse_mode=ParseMode.HTML)
         return END_TIME
 
 
