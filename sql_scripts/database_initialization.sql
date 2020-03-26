@@ -12,3 +12,10 @@ create table users
     full_name    varchar(100) not null,
     phone_number varchar(20)  not null
 );
+
+alter table user_chats
+    owner to postgres;
+
+alter table users
+    owner to postgres;
+
