@@ -7,23 +7,20 @@ from telegram import ParseMode, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Filters
 
 from application_sender import send_organization_application_and_get_url
+from create_application_flow import ApplicationForm
 from db_operations import user_exists_in_users
 from qr_coder import get_qrcode_from_string
 from settings import USER_DATA_APPLICATION_ORGANIZATION_FORM, REASONS, TELEGRAM_BOT_TOKEN
 
 
-class ApplicationOrganizationForm:
+class ApplicationOrganizationForm(ApplicationForm):
     def __init__(self):
-        self.reason = None
+        super().__init__()
         self.organization_name = None
         self.organization_tin = None
         self.car_number = None,
         self.car_info = None
         self.passengers = []
-        self.start_location = None
-        self.destination = None
-        self.start_time = None
-        self.end_time = None
 
     def is_complete(self) -> bool:
         return all([self.reason, self.organization_name, self.organization_tin, self.car_number, self.car_info,
@@ -86,7 +83,8 @@ def create_application(update, context):
         user = update.message.from_user
         logging.info("User %s (id = %s) has started a new organization application", user, user.id)
         update.message.reply_text(
-            'Вы начали составление маршрутного листа для организации. Выберите причину выхода. Для отмены используйте команду /cancel',
+            'Вы начали составление маршрутного листа для организации. Выберите причину выхода. Если Вашей причины нет в списке, '
+            'то укажите её самостоятельно. Для отмены используйте команду /cancel',
             reply_markup=ReplyKeyboardMarkup(REASONS))
 
         context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM] = ApplicationOrganizationForm()
@@ -250,7 +248,8 @@ def application_start_time(update, context):
             parse_mode=ParseMode.HTML)
         return END_TIME
     except ValueError as exception:
-        update.message.reply_text('Вы ввели неверное время. Попробуйте ещё раз.')
+        update.message.reply_text('Пожалуйста укажите время в формате ЧЧ.ММ (например <b>23.45</b> или <b>15.20</b>)',
+                                  parse_mode=ParseMode.HTML)
         return START_TIME
 
 
@@ -292,7 +291,8 @@ def application_end_time(update, context):
         update.message.reply_text('Всё ли верно? (да/нет)')
         return CHECK_APPLICATION
     except ValueError as exception:
-        update.message.reply_text('Вы ввели неверное время. Попробуйте ещё раз.')
+        update.message.reply_text('Пожалуйста укажите время в формате ЧЧ.ММ (например <b>23.45</b> или <b>15.20</b>)',
+                                  parse_mode=ParseMode.HTML)
         return END_TIME
 
 
