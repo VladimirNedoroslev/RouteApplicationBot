@@ -82,7 +82,8 @@ def pin(update, context):
 
     send_contact_button = KeyboardButton(text="Отправить свой номер телефона", request_contact=True)
     update.message.reply_text(
-        'Мне осталось узнать Ваш номер телефона - для этого нажмите на кнопку "Отправить свой номер телефона".',
+        'Мне осталось узнать Ваш номер телефона - для этого нажмите на кнопку "Отправить свой номер телефона".\nЕсли '
+        'Вы не видите кнопку, то нажмите на иконку слева от скрепки в поле ввода сообщений.',
         reply_markup=ReplyKeyboardMarkup([[send_contact_button]]))
 
     return PHONE_NUMBER
@@ -95,8 +96,8 @@ def phone_number(update, context):
     context.user_data[USER_DATA_REGISTRATION_FORM].user_id = str(update.message.from_user.id)
 
     update.message.reply_text(
-        'Отлично, всё готово! Теперь Вы можете создавать маршрутные листы через команды:\n /create_app - для '
-        'физических лиц\n/create_org_app - для юридических лиц')
+        'Отлично, всё готово! Теперь Вы можете создавать маршрутные листы через команды:\n/create_app - для '
+        'физических лиц\n/create_org_app - для юридических лиц', reply_markup=ReplyKeyboardRemove())
 
     user = update.message.from_user
     logging.info("Phone number of %s (id = %s): %s", user.first_name, user.id, user_phone_number)

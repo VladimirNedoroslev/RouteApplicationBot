@@ -242,11 +242,14 @@ def destination(update, context):
 def application_start_time(update, context):
     user = update.message.from_user
     try:
-        input_time = datetime.strptime(update.message.text, "%H.%M")
+        message_text = update.message.text
+        if len(message_text) != 5:
+            raise ValueError
+        input_time = datetime.strptime(message_text, "%H.%M")
         start_time = datetime.now().replace(hour=input_time.hour, minute=input_time.minute, second=0, microsecond=0)
         context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].start_time = start_time.isoformat()
 
-        logging.info("Start time of %s (id = %s): %s", user.first_name, user.id, update.message.text)
+        logging.info("Start time of %s (id = %s): %s", user.first_name, user.id, message_text)
 
         update.message.reply_text(
             'Когда Вы планируете вернуться? (Укажите в формате ЧЧ.ММ, например <b>23.45</b> или <b>15.20</b>)',
@@ -261,10 +264,13 @@ def application_start_time(update, context):
 def application_end_time(update, context):
     user = update.message.from_user
     try:
-        input_time = datetime.strptime(update.message.text, "%H.%M")
+        message_text = update.message.text
+        if len(message_text) != 5:
+            raise ValueError
+        input_time = datetime.strptime(message_text, "%H.%M")
         end_time = datetime.now().replace(hour=input_time.hour, minute=input_time.minute, second=0, microsecond=0)
         context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].end_time = end_time.isoformat()
-        logging.info("End time of %s (id = %s): %s", user.first_name, user.id, update.message.text)
+        logging.info("End time of %s (id = %s): %s", user.first_name, user.id, message_text)
 
         application_form = context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM]
         passengers = get_passengers(application_form.passengers)

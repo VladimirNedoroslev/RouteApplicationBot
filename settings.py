@@ -8,7 +8,7 @@ DB_SETTINGS = {
 LOG_FORMAT = '%(levelname) -5s %(asctime)s %(name) -30s %(funcName) -35s %(lineno) -5d: %(message)s'
 LOG_TIME_FORMAT = '%d/%m/%Y %H:%M:%S'
 
-INPUT_TIME_REGEX = '^([0-9][0-9])\.([0-9][0-9])$'
+INPUT_TIME_REGEX = '^([0-9]){1,2}\.([0-9]){1,2}$'
 
 API_ADDRESS = 'https://ml.tunduk.kg/Applications/Create'
 
