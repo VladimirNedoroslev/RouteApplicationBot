@@ -29,6 +29,7 @@ class UserInfo:
         self.full_name = string_list[2]
         self.phone_number = string_list[3]
 
+
 PIN = 1
 FULL_NAME = 2
 PHONE_NUMBER = 3
@@ -57,7 +58,9 @@ def full_name(update, context):
     name = update.message.text
     context.user_data[USER_DATA_REGISTRATION_FORM].full_name = name
 
-    update.message.reply_text('Хорошо, {}, Теперь введите ваш персональный номер (14 символов)'.format(name))
+    update.message.reply_text(
+        'Хорошо, {}, Теперь введите ваш ПИН (персональный идентификационный номер) он указан в паспорте (14 символов)'.format(
+            name))
 
     return PIN
 
