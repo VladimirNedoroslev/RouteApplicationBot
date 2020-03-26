@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
+from datetime import date
 
 from telegram import ReplyKeyboardRemove
 from telegram.ext import (Updater, CommandHandler)
@@ -9,9 +10,7 @@ from create_application_flow import get_create_application_conversation_handler
 from create_application_organization_flow import get_create_organization_application_conversation_handler
 from db_operations import save_new_user_to_db, check_database
 from registration_flow import get_registration_conversation_handler
-from settings import TELEGRAM_BOT_TOKEN
-
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+from settings import TELEGRAM_BOT_TOKEN, LOG_TIME_FORMAT, LOG_FORMAT
 
 COMMANDS_TEXT = """Мне доступны следующие команды:
 /change_lang - изменить язык
@@ -78,5 +77,7 @@ def main():
 
 
 if __name__ == '__main__':
+    logging.basicConfig(filename='{}_{}.log'.format(__file__, date.today()), level=logging.INFO, format=LOG_FORMAT,
+                        datefmt=LOG_TIME_FORMAT)
     check_database()
     main()
