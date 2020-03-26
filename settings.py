@@ -12,9 +12,6 @@ INPUT_TIME_REGEX = '^([0-9][0-9])\.([0-9][0-9])$'
 
 API_ADDRESS = 'https://ml.tunduk.kg/Applications/Create'
 
-REVERSE_GEOCODING_API_KEY = ''
-REVERSE_GEOCODING_API_ADDRESS = ''
-
 TELEGRAM_BOT_TOKEN = '1064566811:AAHsSkqPK7Sc4G8xUJursc099BO2YH52pdA'
 
 USER_DATA_REGISTRATION_FORM = 'registration_form'
