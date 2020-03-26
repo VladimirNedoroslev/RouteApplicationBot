@@ -7,7 +7,7 @@ from db_operations import save_or_update_user_information, user_exists_in_users
 from settings import USER_DATA_REGISTRATION_FORM
 
 
-class RegistrationForm:
+class UserInfo:
     def __init__(self):
         self.user_id = None
         self.pin = None
@@ -24,6 +24,10 @@ class RegistrationForm:
         return 'id = {}, pin = {}, name = {}, phone number = {}'.format(self.user_id, self.pin, self.full_name,
                                                                         self.phone_number)
 
+    def initialize_with_list(self, string_list):
+        self.pin = string_list[1]
+        self.full_name = string_list[2]
+        self.phone_number = string_list[3]
 
 PIN = 1
 FULL_NAME = 2
@@ -39,7 +43,7 @@ def start_registration(update, context):
             'Вы начали процесс регистрации. Для отмены используйте команду /cancel.')
 
     update.message.reply_text('Пожалуйста введите Ваше ФИО.')
-    context.user_data[USER_DATA_REGISTRATION_FORM] = RegistrationForm()
+    context.user_data[USER_DATA_REGISTRATION_FORM] = UserInfo()
 
     return FULL_NAME
 
@@ -59,19 +63,19 @@ def full_name(update, context):
 
 
 def pin(update, context):
-    message = update.message.text
-    if message == '/cancel':
+    message_text = update.message.text
+    if message_text == '/cancel':
         return cancel(update, context)
-    if len(message) != 14:
+    if len(message_text) != 14:
         update.message.reply_text('Персональный номер должен быть длиной 14 символов. Попробуйте ещё раз')
         return PIN
-    if not message.isnumeric():
+    if not message_text.isnumeric():
         update.message.reply_text('Ваш персональный номер содержит недопустимые символы. Попробуйте ещё раз ')
         return PIN
 
     user = update.message.from_user
-    context.user_data[USER_DATA_REGISTRATION_FORM].pin = message
-    logging.info("Pin of %s (id = %s): %s", user.first_name, user.id, message)
+    context.user_data[USER_DATA_REGISTRATION_FORM].pin = message_text
+    logging.info("Pin of %s (id = %s): %s", user.first_name, user.id, message_text)
 
     send_contact_button = KeyboardButton(text="Отправить свой номер телефона", request_contact=True)
     update.message.reply_text(

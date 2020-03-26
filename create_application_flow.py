@@ -1,21 +1,20 @@
 import logging
 import re
 from datetime import datetime
-from io import BytesIO
 
-import qrcode
 import telegram
 from telegram import ParseMode, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Filters
 
+from application_sender import send_application_and_get_url
 from db_operations import user_exists_in_users
-from settings import USER_DATA_APPLICATION_FORM, TELEGRAM_BOT_TOKEN, REASONS
+from qr_coder import get_qrcode_from_string
+from settings import USER_DATA_APPLICATION_FORM, REASONS, TELEGRAM_BOT_TOKEN
 
 
 class ApplicationForm:
 
     def __init__(self):
-        self.user_id = None
         self.reason = None
         self.start_location = None
         self.destination = None
@@ -23,18 +22,18 @@ class ApplicationForm:
         self.end_time = None
 
     def is_complete(self) -> bool:
-        return all([self.user_id, self.reason, self.start_time, self.end_time, self.start_location,
+        return all([self.reason, self.start_time, self.end_time, self.start_location,
                     self.destination])
 
     def reset(self):
         self.__init__()
 
     def __str__(self):
-        return 'user_id = {} reason={}, start_time={}, end_time={}, start_location = {} destination = {}'.format(
-            self.user_id, self.reason,
-            self.start_time, self.end_time,
-            self.start_location,
-            self.destination)
+        return 'reason={}, start_time={}, end_time={}, start_location = {} destination = {}'.format(self.reason,
+                                                                                                    self.start_time,
+                                                                                                    self.end_time,
+                                                                                                    self.start_location,
+                                                                                                    self.destination)
 
 
 REASON = 1
@@ -56,7 +55,7 @@ def create_application(update, context):
         user = update.message.from_user
         logging.info("User %s (id = %s) has started a new application", user, user.id)
         update.message.reply_text(
-            'Вы начали создание заявки. Выберите причину выхода. Для отмены используйте команду /cancel',
+            'Вы начали составление маршрутного листа. Выберите причину выхода. Для отмены используйте команду /cancel',
             reply_markup=ReplyKeyboardMarkup(REASONS))
 
         context.user_data[USER_DATA_APPLICATION_FORM] = ApplicationForm()
@@ -105,8 +104,9 @@ def application_start_time(update, context):
     user = update.message.from_user
     try:
         input_time = datetime.strptime(update.message.text, "%H.%M")
-        start_time = datetime.now().replace(hour=input_time.hour, minute=input_time.minute, second=0, microsecond=0)
-        context.user_data[USER_DATA_APPLICATION_FORM].application_start_time = start_time
+        start_time = datetime.now().replace(hour=input_time.hour, minute=input_time.minute, second=0,
+                                            microsecond=0).isoformat()
+        context.user_data[USER_DATA_APPLICATION_FORM].start_time = start_time
 
         logging.info("Start time of %s (id = %s): %s", user.first_name, user.id, update.message.text)
 
@@ -123,20 +123,31 @@ def application_end_time(update, context):
     user = update.message.from_user
     try:
         input_time = datetime.strptime(update.message.text, "%H.%M")
-        end_time = datetime.now().replace(hour=input_time.hour, minute=input_time.minute, second=0, microsecond=0)
+        end_time = datetime.now().replace(hour=input_time.hour, minute=input_time.minute, second=0,
+                                          microsecond=0).isoformat()
         context.user_data[USER_DATA_APPLICATION_FORM].end_time = end_time
         logging.info("End time of %s (id = %s): %s", user.first_name, user.id, update.message.text)
 
-        registration_form = context.user_data[USER_DATA_APPLICATION_FORM]
+        application_form = context.user_data[USER_DATA_APPLICATION_FORM]
 
         reply_keyboard = [['Да', 'Нет']]
         update.message.reply_text(
-            'Ваш маршрутный лист почти готов. Проверьте Ваши данные. Всё верно?\n'
-            '<b>Причина</b>: {},\n<b>Дата выхода</b>: {},\n<b>Дата возвращения</b>: {}'.format(registration_form.reason,
-                                                                                               registration_form.application_start_time,
-                                                                                               registration_form.end_time),
+            'Ваш маршрутный лист почти готов. Проверьте Ваши данные.\n'
+            '<b>Причина</b>: {},\n<b>Дата выхода</b>: {},\n<b>Дата возвращения</b>: {}'.format(application_form.reason,
+                                                                                               application_form.start_time,
+                                                                                               application_form.end_time),
             reply_markup=ReplyKeyboardMarkup(reply_keyboard),
             parse_mode=ParseMode.HTML)
+        bot = telegram.Bot(TELEGRAM_BOT_TOKEN)
+        chat_id = update.effective_chat.id
+
+        update.message.reply_text('Место нахождения:')
+        bot.send_location(chat_id, location=application_form.start_location)
+
+        update.message.reply_text('Место направления:')
+        bot.send_location(chat_id, location=application_form.destination)
+
+        update.message.reply_text('Всё ли верно? (да/нет)')
         return CHECK_APPLICATION
     except ValueError as exception:
         update.message.reply_text('Вы ввели неверное время. Попробуйте ещё раз.')
@@ -145,25 +156,21 @@ def application_end_time(update, context):
 
 def check_application(update, context):
     if update.message.text.lower() == 'да':
-        update.message.reply_text('Ваша заявка создана. Ваш QR-код:',
+        update.message.reply_text('Ваш маршрутный лист создан. Генерирую QR-код...',
                                   reply_markup=ReplyKeyboardRemove())
-        context.user_data[USER_DATA_APPLICATION_FORM].user_id = str(update.message.from_user.id)
-        # save_application(context.user_data[USER_DATA_APPLICATION_FORM])
 
-        image = qrcode.make('Some QR code')
-        chat_id = update.effective_chat.id
-        qr_code = BytesIO()
-        qr_code.name = 'qr_code.jpeg'
-        image.save(qr_code, 'JPEG')
-        qr_code.seek(0)
+        url = send_application_and_get_url(str(update.message.from_user.id),
+                                           context.user_data[USER_DATA_APPLICATION_FORM])
+        qr_code = get_qrcode_from_string(url)
         bot = telegram.Bot(TELEGRAM_BOT_TOKEN)
+        chat_id = update.effective_chat.id
+        update.message.reply_text('Ваш QR-код для проверки маршуртного листа.')
         bot.send_photo(chat_id, photo=qr_code)
-
         user = update.message.from_user
         logging.info("User %s (id = %s) has finished application_form.", user.first_name, user.id)
     else:
         update.message.reply_text(
-            'Ваша заявка составлена неправильно. Создайте её снова через команду /create_app',
+            'Вы можете снова создать маршрутный лист через команду /create_app',
             reply_markup=ReplyKeyboardRemove()
         )
 

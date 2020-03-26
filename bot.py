@@ -18,10 +18,10 @@ COMMANDS_TEXT = """Мне доступны следующие команды:
 /register - зарегистрироваться
 /change_info - изменить информацию о себе
 /create_app - составить маршрутный лист
-/create_org_app - составить маршрутый на организацию
+/create_org_app - составить маршрутный лист на организацию
 /help - как работать с этим чат ботом
 /help_video - видео-инструкция
-/commands - посмотреть список оманд"""
+/commands - посмотреть список команд"""
 
 
 def start(update, context):
@@ -42,6 +42,8 @@ def error(update, context):
     """Log Errors caused by Updates."""
     logging.warning('Update "%s" caused error "%s"', update, context.error)
 
+def change_lang(update, context):
+    update.message.reply_text('Извините, смена языков пока не поддерживается.')
 
 def help(update, context):
     update.message.reply_text('Help text')
@@ -56,6 +58,7 @@ def main():
     dispatcher = updater.dispatcher
 
     dispatcher.add_handler(CommandHandler('start', start))
+    dispatcher.add_handler(CommandHandler('change_lang', change_lang))
     dispatcher.add_handler(CommandHandler('commands', commands))
     dispatcher.add_handler(CommandHandler('help', help))
     dispatcher.add_handler(CommandHandler('help_video', help_video))
