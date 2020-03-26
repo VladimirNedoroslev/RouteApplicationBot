@@ -34,23 +34,26 @@ def start(update, context):
 
 
 def commands(update, context):
-    ReplyKeyboardRemove()
     update.message.reply_text(COMMANDS_TEXT, reply_markup=ReplyKeyboardRemove())
 
 
 def error(update, context):
     """Log Errors caused by Updates."""
     logging.warning('Update "%s" caused error "%s"', update, context.error)
+    update.message.reply_text('Я наткнулся на небольшую техническую неполадку, когда хотел ответить на эту команду. '
+                              'Извиняюсь, но я не смогу её обработать.')
+
 
 def change_lang(update, context):
     update.message.reply_text('Извините, смена языков пока не поддерживается.')
 
+
 def help(update, context):
-    update.message.reply_text('Help text')
+    update.message.reply_text('Тут будет инструкция по работе с ботом.')
 
 
 def help_video(update, context):
-    update.message.reply_text('Help video')
+    update.message.reply_text('Тут будет видео-инструкция по работе с ботом.')
 
 
 def main():
