@@ -1,14 +1,11 @@
 import logging
 from datetime import datetime
-from io import BytesIO
 
-import qrcode
-import telegram
 from telegram import ParseMode, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Filters
 
 from db_operations import user_exists_in_users
-from settings import USER_DATA_APPLICATION_ORGANIZATION_FORM, TELEGRAM_BOT_TOKEN
+from settings import USER_DATA_APPLICATION_ORGANIZATION_FORM
 
 
 class ApplicationOrganizationForm:
@@ -207,16 +204,10 @@ def check_application(update, context):
                                   reply_markup=ReplyKeyboardRemove()
                                   )
         context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].user_id = str(update.message.from_user.id)
-        # save_application(context.user_data[USER_DATA_APPLICATION_FORM])
 
-        image = qrcode.make('Some QR code')
-        chat_id = update.effective_chat.id
-        qr_code = BytesIO()
-        qr_code.name = 'qr_code.jpeg'
-        image.save(qr_code, 'JPEG')
-        qr_code.seek(0)
-        bot = telegram.Bot(TELEGRAM_BOT_TOKEN)
-        bot.send_photo(chat_id, photo=qr_code)
+        # bot = telegram.Bot(TELEGRAM_BOT_TOKEN)
+        # chat_id = update.effective_chat.id
+        # bot.send_photo(chat_id, photo=)
 
         user = update.message.from_user
         logging.info("User %s (id = %s) has finished application_form.", user.first_name, user.id)
