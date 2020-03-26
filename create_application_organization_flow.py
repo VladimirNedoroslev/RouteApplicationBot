@@ -11,7 +11,7 @@ class ApplicationOrganizationFlow:
     PASSENGERS_PIN = 7
 
     START_LOCATION = 8
-    END_LOCATION = 9
+    DESTINATION = 9
 
     START_TIME = 10
     END_TIME = 11
