@@ -1,7 +1,7 @@
 import logging
 
 from telegram import ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import ConversationHandler
+from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Filters
 
 from db_operations import save_or_update_user_information
 from registration_form import RegistrationForm
@@ -24,7 +24,7 @@ def start_registration(update, context):
 
 def family_name(update, context):
     if update.message.text == '/cancel':
-        return cancel_registration(update, context)
+        return cancel(update, context)
     user = update.message.from_user
     context.user_data[USER_DATA_REGISTRATION_FORM] = RegistrationForm()
     context.user_data[USER_DATA_REGISTRATION_FORM].family_name = update.message.text
@@ -36,7 +36,7 @@ def family_name(update, context):
 
 def given_name(update, context):
     if update.message.text == '/cancel':
-        return cancel_registration(update, context)
+        return cancel(update, context)
     user = update.message.from_user
     context.user_data[USER_DATA_REGISTRATION_FORM].given_name = update.message.text
     logging.info("Given Name of %s (id = %s): %s", user.first_name, user.id, update.message.text)
@@ -47,7 +47,7 @@ def given_name(update, context):
 
 def middle_name(update, context):
     if update.message.text == '/cancel':
-        return cancel_registration(update, context)
+        return cancel(update, context)
     user = update.message.from_user
     logging.info("Middle name of %s (id = %s): %s", user.first_name, user.id, update.message.text)
 
@@ -80,8 +80,22 @@ def phone_number(update, context):
     return ConversationHandler.END
 
 
-def cancel_registration(update, context):
+def cancel(update, context):
     update.message.reply_text(
         'Вы прервали регистрацию. Пока Вы не заполните все данные, Вы не сможете заполнять заявки. Начать регистрацию можно через команду /register',
         reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
+
+
+
+def get_registration_conversation_handler():
+    return ConversationHandler(
+        entry_points=[CommandHandler('register', start_registration), ],
+        states={
+            RegistrationFlow.FAMILY_NAME: [MessageHandler(Filters.text, family_name)],
+            RegistrationFlow.GIVEN_NAME: [MessageHandler(Filters.text, given_name)],
+            RegistrationFlow.MIDDLE_NAME: [MessageHandler(Filters.text, middle_name)],
+            RegistrationFlow.PHONE_NUMBER: [MessageHandler(Filters.contact, phone_number)],
+        },
+        fallbacks={CommandHandler('cancel', cancel)}
+    )

@@ -4,7 +4,6 @@ from datetime import datetime
 
 import psycopg2
 
-from application_form import ApplicationForm
 from registration_form import RegistrationForm
 from settings import DB_SETTINGS
 
@@ -28,7 +27,9 @@ def save_new_user_to_db(user_id: str, chat_id: str):
         logging.info("New user has been inserted into the database. id = {}".format(user_id))
 
 
-def user_exists_in_users(connection, user_id: str):
+def user_exists_in_users(user_id: str, connection=None):
+    if not connection:
+        connection = psycopg2.connect(**DB_SETTINGS)
     cursor = connection.cursor()
     cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
     if cursor.fetchone():
@@ -55,7 +56,7 @@ def save_or_update_user_information(registration_form: RegistrationForm):
     connection.commit()
 
 
-def save_application(application_form: ApplicationForm):
+def save_application(application_form):
     connection = psycopg2.connect(**DB_SETTINGS)
     cursor = connection.cursor()
     cursor.execute(
