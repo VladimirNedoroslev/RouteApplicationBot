@@ -93,10 +93,6 @@ def check_database():
             raise psycopg2.errors.UndefinedTable('table "users" does not exist')
         logging.info('Table users exists')
 
-        cursor.execute("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name='user_applications')")
-        if not cursor.fetchone()[0]:
-            raise psycopg2.errors.UndefinedTable('table "user_applications" does not exist')
-        logging.info('Table user_applications exists')
 
     except Exception as exception:
         logging.exception(exception)
