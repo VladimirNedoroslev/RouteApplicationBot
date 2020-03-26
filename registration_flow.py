@@ -83,24 +83,29 @@ def pin(update, context):
     send_contact_button = KeyboardButton(text="Отправить свой номер телефона", request_contact=True)
     update.message.reply_text(
         'Мне осталось узнать Ваш номер телефона - для этого нажмите на кнопку "Отправить свой номер телефона".',
-        reply_markup=ReplyKeyboardMarkup([[send_contact_button]], one_time_keyboard=True))
+        reply_markup=ReplyKeyboardMarkup([[send_contact_button]]))
 
     return PHONE_NUMBER
 
 
 def phone_number(update, context):
-    user = update.message.from_user
     user_phone_number = update.effective_message.contact.phone_number
 
-    logging.info("Phone number of %s (id = %s): %s", user.first_name, user.id, user_phone_number)
-    update.message.reply_text(
-        'Отлично, всё готово! Теперь Вы можете создавать заявки через команду /create_app и /create_org_app', )
     context.user_data[USER_DATA_REGISTRATION_FORM].phone_number = user_phone_number
     context.user_data[USER_DATA_REGISTRATION_FORM].user_id = str(update.message.from_user.id)
+
+    update.message.reply_text(
+        'Отлично, всё готово! Теперь Вы можете создавать маршрутные листы через команды:\n /create_app - для '
+        'физических лиц\n/create_org_app - для юридических лиц')
+
+    user = update.message.from_user
+    logging.info("Phone number of %s (id = %s): %s", user.first_name, user.id, user_phone_number)
 
     logging.info(context.user_data[USER_DATA_REGISTRATION_FORM])
     if context.user_data[USER_DATA_REGISTRATION_FORM].is_complete():
         save_or_update_user_information(context.user_data[USER_DATA_REGISTRATION_FORM])
+    else:
+        update.message.reply_text('При Вашей регистрации произошла ошибка. Попробуйте позже.')
     return ConversationHandler.END
 
 
