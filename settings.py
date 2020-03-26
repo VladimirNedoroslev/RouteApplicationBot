@@ -8,7 +8,12 @@ DB_SETTINGS = {
 LOG_FORMAT = '%(levelname) -5s %(asctime)s %(name) -30s %(funcName) -35s %(lineno) -5d: %(message)s'
 LOG_TIME_FORMAT = '%d/%m/%Y %H:%M:%S'
 
+INPUT_TIME_REGEX = '^([0-9][0-9])\.([0-9][0-9])$'
+
 API_ADDRESS = 'https://ml.tunduk.kg/Applications/Create'
+
+REVERSE_GEOCODING_API_KEY = ''
+REVERSE_GEOCODING_API_ADDRESS = ''
 
 TELEGRAM_BOT_TOKEN = '1064566811:AAHsSkqPK7Sc4G8xUJursc099BO2YH52pdA'
 
@@ -24,16 +29,4 @@ REASONS = [["Перевозка лекарственных средств"],
            ["Осуществление охранных функций"],
            ["Коммунальные услуги"],
            ["Личные дела"],
-           ["Другое"],
            ]
-
-REASON_ID = {
-    "Перевозка лекарственных средств": 0,
-    "Оказание медицинских услуг": 1,
-    "Перевозка товаров первой необходимости": 2,
-    "Транспортировка граждан": 3,
-    "Осуществление охранных функций": 4,
-    "Коммунальные услуги": 5,
-    "Личные дела": 6,
-    "Другое": 7,
-}

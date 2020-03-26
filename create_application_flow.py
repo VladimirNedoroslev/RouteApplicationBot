@@ -9,7 +9,7 @@ from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Fi
 from application_sender import send_application_and_get_url
 from db_operations import user_exists_in_users
 from qr_coder import get_qrcode_from_string
-from settings import USER_DATA_APPLICATION_FORM, REASONS, TELEGRAM_BOT_TOKEN
+from settings import USER_DATA_APPLICATION_FORM, REASONS, TELEGRAM_BOT_TOKEN, INPUT_TIME_REGEX
 
 
 class ApplicationForm:
@@ -188,15 +188,14 @@ def cancel(update, context):
 
 
 def get_create_application_conversation_handler():
-    input_time_regex = '^([0-9][0-9])\.([0-9][0-9])$'
     return ConversationHandler(
         entry_points=[CommandHandler('create_app', create_application), ],
         states={
             REASON: [MessageHandler(Filters.text, application_reason)],
             START_LOCATION: [MessageHandler(Filters.location, application_start_location)],
             DESTINATION: [MessageHandler(Filters.location, application_destination)],
-            START_TIME: [MessageHandler(Filters.regex(input_time_regex), application_start_time)],
-            END_TIME: [MessageHandler(Filters.regex(input_time_regex), application_end_time)],
+            START_TIME: [MessageHandler(Filters.regex(INPUT_TIME_REGEX), application_start_time)],
+            END_TIME: [MessageHandler(Filters.regex(INPUT_TIME_REGEX), application_end_time)],
             CHECK_APPLICATION: [
                 MessageHandler(Filters.regex(re.compile(r'^(да|нет)$', re.IGNORECASE)), check_application)],
 

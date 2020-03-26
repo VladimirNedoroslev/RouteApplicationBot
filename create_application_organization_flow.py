@@ -10,7 +10,7 @@ from application_sender import send_organization_application_and_get_url
 from create_application_flow import ApplicationForm
 from db_operations import user_exists_in_users
 from qr_coder import get_qrcode_from_string
-from settings import USER_DATA_APPLICATION_ORGANIZATION_FORM, REASONS, TELEGRAM_BOT_TOKEN
+from settings import USER_DATA_APPLICATION_ORGANIZATION_FORM, REASONS, TELEGRAM_BOT_TOKEN, INPUT_TIME_REGEX
 
 
 class ApplicationOrganizationForm(ApplicationForm):
@@ -349,8 +349,8 @@ def get_create_organization_application_conversation_handler():
                              CommandHandler('skip', skip_passengers)],
             START_LOCATION: [MessageHandler(Filters.location, application_start_location)],
             DESTINATION: [MessageHandler(Filters.location, destination)],
-            START_TIME: [MessageHandler(Filters.text, application_start_time)],
-            END_TIME: [MessageHandler(Filters.text, application_end_time)],
+            START_TIME: {MessageHandler(Filters.regex(INPUT_TIME_REGEX), application_start_time)},
+            END_TIME: [MessageHandler(Filters.regex(INPUT_TIME_REGEX), application_end_time)],
             CHECK_APPLICATION: [
                 MessageHandler(Filters.regex(re.compile(r'^(да|нет)$', re.IGNORECASE)), check_application)],
         },
