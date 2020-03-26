@@ -104,12 +104,11 @@ def phone_number(update, context):
 def cancel(update, context):
     if user_exists_in_users(str(update.message.from_user.id)):
         update.message.reply_text(
-            'Вы прервали регистрацию. Пока Вы не заполните все данные, Вы не сможете заполнять заявки. Начать регистрацию можно через команду /change_info',
+            'Вы прервали процесс изменения своих данных. Запустить его снова можно через команду /change_info',
             reply_markup=ReplyKeyboardRemove())
-
     else:
         update.message.reply_text(
-            'Вы прервали процесс изменения своих данных. Запустить его снова можно через команду /register',
+            'Вы прервали регистрацию. Пока Вы не заполните все данные, Вы не сможете заполнять заявки. Начать регистрацию можно через команду /register',
             reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
