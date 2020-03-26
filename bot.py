@@ -1,40 +1,33 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# This program is dedicated to the public domain under the CC0 license.
 
-"""
-First, a few callback functions are defined. Then, those functions are passed to
-the Dispatcher and registered at their respective places.
-Then, the bot is started and runs until we press Ctrl-C on the command line.
-Usage:
-Example of a bot-user conversation using ConversationHandler.
-Send /start to initiate the conversation.
-Press Ctrl-C on the command line or send a signal to the process to stop the
-bot.
-"""
-
+# 'Теперь отправьте геолокацию Вашего места проживания .'
 import logging
+import re
 
 import psycopg2
-import telegram
-from telegram import (ReplyKeyboardRemove)
-from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters,
-                          ConversationHandler)
+from telegram import ReplyKeyboardRemove
+from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters, ConversationHandler)
 
-from db_operations import save_new_user_to_db, save_or_update_user_information
-from registration_form import RegistrationForm
-from settings import TELEGRAM_BOT_TOKEN, DB_SETTINGS, USER_DATA_APPLICATION_REASON, \
-    USER_DATA_APPLICATION_DESTINATION_LONGITUDE, USER_DATA_APPLICATION_DESTINATION_LATITUDE, USER_DATA_REGISTRATION_FORM
-from time_options import TimeOptions
+from create_application_flow import CreateApplicationFlow, application_reason, application_start_location, \
+    application_destination, application_start_time, application_end_time, application_check, cancel_application, \
+    create_application
+from db_operations import save_new_user_to_db
+from registration_flow import RegistrationFlow, start_registration, family_name, given_name, middle_name, phone_number, \
+    cancel_registration
+from settings import TELEGRAM_BOT_TOKEN, DB_SETTINGS
 
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-logger = logging.getLogger(__name__)
 
-FAMILY_NAME, GIVEN_NAME, MIDDLE_NAME, PHONE_NUMBER, LOCATION = range(5)
-
-REASON, DESTINATION, START_TIME, END_TIME, CHECK_APPLICATION = range(5)
+COMMANDS_TEXT = """Мне доступны следующие команды:
+/change_lang - изменить язык
+/register - зарегистрироваться
+/create_app - составить маршрутный лист
+/create_org_app - составить маршрутый на организацию
+/help - как работать с этим чат ботом
+/help_video - видео-инструкция
+/commands - посмотреть список команд"""
 
 
 def start(update, context):
@@ -42,177 +35,23 @@ def start(update, context):
     user_id = str(update.message.from_user.id)
 
     save_new_user_to_db(user_id=user_id, chat_id=chat_id)
-
-    context.user_data[USER_DATA_REGISTRATION_FORM] = RegistrationForm()
     update.message.reply_text(
-        'Привет. Для того чтобы подавать заявки, Вам необходимо ввести информацию о Вас. '
-        'Пожалуйста введите ваше фамилию.')
-
-    return FAMILY_NAME
+        'Привет, я могу помочь Вам с сотавлением электронных маршрутных листов.\n'
+        '{} Вы всегда можете посмотреть этот список  через команду /commands'.format(COMMANDS_TEXT))
 
 
-def family_name(update, context):
-    user = update.message.from_user
-    context.user_data[USER_DATA_REGISTRATION_FORM].family_name = update.message.text
-    logger.info("Family Name of %s (id = %s): %s", user.first_name, user.id, update.message.text)
-
-    update.message.reply_text('Введите ваше имя')
-    return GIVEN_NAME
-
-
-def given_name(update, context):
-    user = update.message.from_user
-    context.user_data[USER_DATA_REGISTRATION_FORM].given_name = update.message.text
-    logger.info("Given Name of %s (id = %s): %s", user.first_name, user.id, update.message.text)
-
-    update.message.reply_text('Введите ваше отчество')
-    return MIDDLE_NAME
-
-
-def middle_name(update, context):
-    user = update.message.from_user
-    logger.info("Middle name of %s (id = %s): %s", user.first_name, user.id, update.message.text)
-
-    context.user_data[USER_DATA_REGISTRATION_FORM].middle_name = update.message.text
-
-    send_contact_button = telegram.KeyboardButton(text="Отправить свой номер телефона", request_contact=True)
-    reg_form = context.user_data[USER_DATA_REGISTRATION_FORM]
-    name = '{} {} {}'.format(reg_form.family_name, reg_form.given_name, reg_form.middle_name)
-    update.message.reply_text(
-        'Хорошо, {}, теперь мне нужен Ваш номер телефона - для этого нажмите на кнопку "Отправить свой номер телефона".'.format(
-            name),
-        reply_markup=telegram.ReplyKeyboardMarkup([[send_contact_button]]))
-
-    logger.info(context.user_data[USER_DATA_REGISTRATION_FORM])
-    return PHONE_NUMBER
-
-
-def phone_number(update, context):
-    user = update.message.from_user
-    user_phone_number = update.effective_message.contact.phone_number
-
-    logger.info("Phone number of %s (id = %s): %s", user.first_name, user.id, user_phone_number)
-    update.message.reply_text(
-        'Теперь отправьте геолокацию Вашего места проживания (Нажмите на скрепку, выберите "Геолокация" и укажите на карте место, где Вы живёте).',
-        reply_markup=ReplyKeyboardRemove())
-    context.user_data[USER_DATA_REGISTRATION_FORM].phone_number = user_phone_number
-
-    logger.info(context.user_data[USER_DATA_REGISTRATION_FORM])
-    return LOCATION
-
-
-def location(update, context):
-    user = update.message.from_user
-    user_address = update.message.location
-
-    logger.info("Address of %s (id = %s): %s", user.first_name, user.id, user_address)
-    context.user_data[USER_DATA_REGISTRATION_FORM].address_longitude = user_address.longitude
-    context.user_data[USER_DATA_REGISTRATION_FORM].address_latitude = user_address.latitude
-    context.user_data[USER_DATA_REGISTRATION_FORM].user_id = str(update.message.from_user.id)
-    if context.user_data[USER_DATA_REGISTRATION_FORM].is_complete():
-        save_or_update_user_information(context.user_data[USER_DATA_REGISTRATION_FORM])
-    update.message.reply_text(
-        'Отлично, Ваша регистрация завершена! Теперь Вы можете создать заявку через команду /createApplication')
-
-    logger.info(context.user_data[USER_DATA_REGISTRATION_FORM])
-
-    return ConversationHandler.END
-
-
-def cancel_registration(update, context):
-    update.message.reply_text(
-        'Вы прервали регистрацию. Пока Вы не заполните все данные, Вы не сможете заполнять заявки. Начать регистрацию можно через команду /start',
-        reply_markup=ReplyKeyboardRemove())
-    context.user_data[USER_DATA_REGISTRATION_FORM].reset()
-    return ConversationHandler.END
+def commands(update, context):
+    ReplyKeyboardRemove()
+    update.message.reply_text(COMMANDS_TEXT, reply_markup=ReplyKeyboardRemove())
 
 
 def error(update, context):
     """Log Errors caused by Updates."""
-    logger.warning('Update "%s" caused error "%s"', update, context.error)
+    logging.warning('Update "%s" caused error "%s"', update, context.error)
 
 
-def create_application(update, context):
-    user = update.message.from_user
-    logger.info("User %s (id = %s) has started a new application", user, user.id)
-    update.message.reply_text(
-        'Вы начали создание заявки. Опишите причину выхода.')
-    return REASON
-
-
-def application_reason(update, context):
-    user = update.message.from_user
-    context.user_data[USER_DATA_APPLICATION_REASON] = update.message.text
-    logger.info("Reason of %s (id = %s): %s", user.first_name, user.id, update.message.text)
-
-    update.message.reply_text(
-        'Укажите геолокацию, куда вы идёте. (так же, как и при регистрации)')
-    return DESTINATION
-
-
-def application_destination(update, context):
-    user = update.message.from_user
-    destination = update.message.location
-    context.user_data[USER_DATA_APPLICATION_DESTINATION_LONGITUDE] = destination.longitude
-    context.user_data[USER_DATA_APPLICATION_DESTINATION_LATITUDE] = destination.latitude
-
-    logger.info("Destination of %s (id = %s): %s", user.first_name, user.id, destination)
-
-    reply_keyboard = [TimeOptions.OPTIONS]
-
-    update.message.reply_text(
-        'Сколько времени это у вас займёт?',
-        reply_markup=telegram.ReplyKeyboardMarkup(reply_keyboard))
-    return START_TIME
-
-
-def application_start_time(update, context):
-    user = update.message.from_user
-    # context.user_data[USER_DATA_APPLICATION_APPROXIMATE_TIME] =
-    logger.info("Start time of %s (id = %s): %s", user.first_name, user.id, update.message.text)
-
-    reply_keyboard = [['Да', 'Нет']]
-    update.message.reply_text(
-        'Ваша заявка собрана. Проверьте Ваши данные. Всё верно?',
-        reply_markup=telegram.ReplyKeyboardMarkup(reply_keyboard))
-
-    return END_TIME
-
-def application_end_time(update, context):
-    user = update.message.from_user
-    # context.user_data[USER_DATA_APPLICATION_APPROXIMATE_TIME] =
-    logger.info("End time of %s (id = %s): %s", user.first_name, user.id, update.message.text)
-
-    reply_keyboard = [['Да', 'Нет']]
-    update.message.reply_text(
-        'Ваша заявка собрана. Проверьте Ваши данные. Всё верно?',
-        reply_markup=telegram.ReplyKeyboardMarkup(reply_keyboard))
-
-    return END_TIME
-
-
-
-def application_check(update, context):
-    if update.message.text.lower() == 'да':
-        update.message.reply_text('Ваша заявка создана. Ваш QR-код:',
-                                  reply_markup=ReplyKeyboardRemove()
-                                  )
-    #     send QR-code
-    else:
-        update.message.reply_text(
-            'Ваша заявка составлена неправильно. Создайте её снова через команду /createApplication',
-            reply_markup=ReplyKeyboardRemove()
-        )
-
-    return ConversationHandler.END
-
-
-def cancel_application(update, context):
-    update.message.reply_text(
-        'Вы прервали создание заяки. Для того чтобы заполнить заявку введите команду /createApplication.',
-        reply_markup=ReplyKeyboardRemove())
-
-    return ConversationHandler.END
+def help(update, context):
+    pass
 
 
 def main():
@@ -220,43 +59,45 @@ def main():
     dispatcher = updater.dispatcher
 
     registration_handler = ConversationHandler(
-        entry_points=[CommandHandler(start.__name__, start)],
+        entry_points=[CommandHandler('register', start_registration), ],
 
         states={
-            FAMILY_NAME: [MessageHandler(Filters.text, family_name)],
-            GIVEN_NAME: [MessageHandler(Filters.text, given_name)],
-            MIDDLE_NAME: [MessageHandler(Filters.text, middle_name)],
-            PHONE_NUMBER: [MessageHandler(Filters.contact, phone_number)],
-            LOCATION: [MessageHandler(Filters.location, location)]
-
+            RegistrationFlow.FAMILY_NAME: [MessageHandler(Filters.text, family_name)],
+            RegistrationFlow.GIVEN_NAME: [MessageHandler(Filters.text, given_name)],
+            RegistrationFlow.MIDDLE_NAME: [MessageHandler(Filters.text, middle_name)],
+            RegistrationFlow.PHONE_NUMBER: [MessageHandler(Filters.contact, phone_number)],
         },
 
-        fallbacks=[CommandHandler(cancel_registration.__name__, cancel_registration)]
+        fallbacks=[CommandHandler('cancel', cancel_registration)]
     )
 
-    time_regex = '^({}|{}|{}|{})$'.format(TimeOptions.LESS_THAN_HOUR, TimeOptions.ONE_TO_THREE_HOURS,
-                                          TimeOptions.ONE_TO_THREE_HOURS, TimeOptions.MORE_THAN_SIX_HOURS)
+    input_time_regex = '^([0-9][0-9])\.([0-9][0-9])$'
     create_application_handler = ConversationHandler(
-        entry_points=[CommandHandler('createApplication', create_application)],
+        entry_points=[CommandHandler('create_app', create_application), ],
         states={
-            REASON: [MessageHandler(Filters.text, application_reason)],
-            DESTINATION: [MessageHandler(Filters.location, application_destination)],
-            START_TIME: [MessageHandler(Filters.regex(time_regex),
-                                        application_start_time)],
-            END_TIME: [MessageHandler(Filters.text, application_end_time)],
+            CreateApplicationFlow.REASON: [MessageHandler(Filters.text, application_reason)],
 
-            CHECK_APPLICATION: [MessageHandler(Filters.regex('^(Да|Нет)$'), application_check)],
+            CreateApplicationFlow.START_LOCATION: [MessageHandler(Filters.location, application_start_location)],
+            CreateApplicationFlow.DESTINATION: [MessageHandler(Filters.location, application_destination)],
+            CreateApplicationFlow.START_TIME: [MessageHandler(Filters.regex(input_time_regex),
+                                                              application_start_time)],
+            CreateApplicationFlow.END_TIME: [MessageHandler(Filters.regex(input_time_regex), application_end_time)],
+
+            CreateApplicationFlow.CHECK_APPLICATION: [
+                MessageHandler(Filters.regex(re.compile(r'^(да|нет)$', re.IGNORECASE)), application_check)],
 
         },
-        fallbacks=[CommandHandler(cancel_application.__name__, cancel_application)]
+        fallbacks=[CommandHandler('cancel', cancel_application)]
     )
+    dispatcher.add_handler(CommandHandler('commands', commands))
+    dispatcher.add_handler(CommandHandler(start.__name__, start))
 
     dispatcher.add_handler(registration_handler)
     dispatcher.add_handler(create_application_handler)
     dispatcher.add_error_handler(error)
 
     updater.start_polling()
-    logger.info('Bot polling has been started!')
+    logging.info('Bot polling has been started!')
     updater.idle()
 
 

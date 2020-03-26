@@ -1,0 +1,9 @@
+class InlineButtons():
+    ALL_COMMANDS = '1'
+    REGISTER = '2'
+    CHANGE_LANGUAGE = '3'
+    CREATE_APPLICATION_FORM = '4'
+    CREATE_ORGANIZATION_APPLICATION_FORM = '5'
+    CHANGE_INFO = '6'
+    HELP = '7'
+    VIDEO_HELP = '8'

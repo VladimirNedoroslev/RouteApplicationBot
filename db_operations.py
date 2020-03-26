@@ -1,8 +1,10 @@
 import logging
+import uuid
 from datetime import datetime
 
 import psycopg2
 
+from application_form import ApplicationForm
 from registration_form import RegistrationForm
 from settings import DB_SETTINGS
 
@@ -53,3 +55,15 @@ def save_or_update_user_information(registration_form: RegistrationForm):
              registration_form.address_latitude, registration_form.user_id))
         logging.info("User (id = {}) has been updated. ({})".format(registration_form.user_id, registration_form))
     connection.commit()
+
+
+def save_application(application_form: ApplicationForm):
+    connection = psycopg2.connect(**DB_SETTINGS)
+    cursor = connection.cursor()
+    cursor.execute(
+        "INSERT INTO user_applications (id, user_id, reason, destination_longitude, destination_latitude, start_time, end_time, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s",
+        (uuid.uuid1(), application_form.user_id, application_form.reason, application_form.destination_longitude,
+         application_form.destination_latitude, application_form.start_time, application_form.end_time, datetime.now()))
+    connection.commit()
+    logging.info(
+        "New application has been created by the user (id = {}): {}".format(application_form.user_id, application_form))
