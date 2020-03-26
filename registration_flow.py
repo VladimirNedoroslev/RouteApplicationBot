@@ -1,5 +1,4 @@
 import logging
-from enum import Enum
 
 from telegram import ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ConversationHandler
@@ -9,27 +8,23 @@ from registration_form import RegistrationForm
 from settings import USER_DATA_REGISTRATION_FORM
 
 
-class RegistrationFlow(Enum):
-    PIN = 1
-    FAMILY_NAME = 2
-    GIVEN_NAME = 3
-    MIDDLE_NAME = 4
-    PHONE_NUMBER = 5
-    ADDRESS = 6
-    CAR_STATE_NUMBER = 7
-    CAR_INFORMATION = 8
-    ORGANIZATION_TIN = 9
-    ORGANIZATION_NAME = 10
+class RegistrationFlow:
+    FAMILY_NAME = 1
+    GIVEN_NAME = 2
+    MIDDLE_NAME = 3
+    PHONE_NUMBER = 4
 
 
 def start_registration(update, context):
     update.message.reply_text(
-        'Вы начали процесс регистрации. Для отмены используйте команду /cancel.\nПожалуйста введите вашу фамилию. ')
+        'Вы начали процесс регистрации. Для отмены используйте команду /cancel.\nПожалуйста введите вашу фамилию.')
 
     return RegistrationFlow.FAMILY_NAME
 
 
 def family_name(update, context):
+    if update.message.text == '/cancel':
+        return cancel_registration(update, context)
     user = update.message.from_user
     context.user_data[USER_DATA_REGISTRATION_FORM] = RegistrationForm()
     context.user_data[USER_DATA_REGISTRATION_FORM].family_name = update.message.text
@@ -40,6 +35,8 @@ def family_name(update, context):
 
 
 def given_name(update, context):
+    if update.message.text == '/cancel':
+        return cancel_registration(update, context)
     user = update.message.from_user
     context.user_data[USER_DATA_REGISTRATION_FORM].given_name = update.message.text
     logging.info("Given Name of %s (id = %s): %s", user.first_name, user.id, update.message.text)
@@ -49,6 +46,8 @@ def given_name(update, context):
 
 
 def middle_name(update, context):
+    if update.message.text == '/cancel':
+        return cancel_registration(update, context)
     user = update.message.from_user
     logging.info("Middle name of %s (id = %s): %s", user.first_name, user.id, update.message.text)
 
@@ -81,26 +80,8 @@ def phone_number(update, context):
     return ConversationHandler.END
 
 
-# def address(update, context):
-#     user = update.message.from_user
-#     user_address = update.message.location
-#
-#     logger.info("Address of %s (id = %s): %s", user.first_name, user.id, user_address)
-#     context.user_data[USER_DATA_REGISTRATION_FORM].address_longitude = user_address.longitude
-#     context.user_data[USER_DATA_REGISTRATION_FORM].address_latitude = user_address.latitude
-#     context.user_data[USER_DATA_REGISTRATION_FORM].user_id = str(update.message.from_user.id)
-#     if context.user_data[USER_DATA_REGISTRATION_FORM].is_complete():
-#         save_or_update_user_information(context.user_data[USER_DATA_REGISTRATION_FORM])
-#     update.message.reply_text(
-#         '')
-#
-#     logger.info(context.user_data[USER_DATA_REGISTRATION_FORM])
-#
-#     return ConversationHandler.END
-
-
 def cancel_registration(update, context):
     update.message.reply_text(
-        'Вы прервали регистрацию. Пока Вы не заполните все данные, Вы не сможете заполнять заявки. Начать регистрацию можно через команду /start',
+        'Вы прервали регистрацию. Пока Вы не заполните все данные, Вы не сможете заполнять заявки. Начать регистрацию можно через команду /register',
         reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END

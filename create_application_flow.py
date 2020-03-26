@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime
-from enum import Enum
 from io import BytesIO
 
 import psycopg2
@@ -14,7 +13,7 @@ from db_operations import user_exists_in_users
 from settings import USER_DATA_APPLICATION_FORM, TELEGRAM_BOT_TOKEN, DB_SETTINGS
 
 
-class CreateApplicationFlow(Enum):
+class CreateApplicationFlow:
     REASON = 1
     START_LOCATION = 2
     DESTINATION = 3
@@ -140,7 +139,7 @@ def application_check(update, context):
         logging.info("User %s (id = %s) has finished application_form.", user.first_name, user.id)
     else:
         update.message.reply_text(
-            'Ваша заявка составлена неправильно. Создайте её снова через команду /createApplication',
+            'Ваша заявка составлена неправильно. Создайте её снова через команду /create_app',
             reply_markup=ReplyKeyboardRemove()
         )
 
@@ -149,6 +148,6 @@ def application_check(update, context):
 
 def cancel_application(update, context):
     update.message.reply_text(
-        'Вы прервали создание заяки. Для того чтобы заполнить заявку введите команду /createApplication.',
+        'Вы прервали создание заяки. Для того чтобы заполнить заявку введите команду /create_app.',
         reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END

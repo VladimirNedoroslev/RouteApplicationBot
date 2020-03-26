@@ -5,20 +5,18 @@
 import logging
 import re
 
-import psycopg2
 from telegram import ReplyKeyboardRemove
 from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters, ConversationHandler)
 
 from create_application_flow import CreateApplicationFlow, application_reason, application_start_location, \
     application_destination, application_start_time, application_end_time, application_check, cancel_application, \
     create_application
-from db_operations import save_new_user_to_db
+from db_operations import save_new_user_to_db, check_database
 from registration_flow import RegistrationFlow, start_registration, family_name, given_name, middle_name, phone_number, \
     cancel_registration
-from settings import TELEGRAM_BOT_TOKEN, DB_SETTINGS
+from settings import TELEGRAM_BOT_TOKEN
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-
 
 COMMANDS_TEXT = """Мне доступны следующие команды:
 /change_lang - изменить язык
@@ -36,8 +34,7 @@ def start(update, context):
 
     save_new_user_to_db(user_id=user_id, chat_id=chat_id)
     update.message.reply_text(
-        'Привет, я могу помочь Вам с сотавлением электронных маршрутных листов.\n'
-        '{} Вы всегда можете посмотреть этот список  через команду /commands'.format(COMMANDS_TEXT))
+        'Привет, я могу помочь Вам с сотавлением электронных маршрутных листов.\n{}'.format(COMMANDS_TEXT))
 
 
 def commands(update, context):
@@ -60,15 +57,13 @@ def main():
 
     registration_handler = ConversationHandler(
         entry_points=[CommandHandler('register', start_registration), ],
-
         states={
             RegistrationFlow.FAMILY_NAME: [MessageHandler(Filters.text, family_name)],
             RegistrationFlow.GIVEN_NAME: [MessageHandler(Filters.text, given_name)],
             RegistrationFlow.MIDDLE_NAME: [MessageHandler(Filters.text, middle_name)],
             RegistrationFlow.PHONE_NUMBER: [MessageHandler(Filters.contact, phone_number)],
         },
-
-        fallbacks=[CommandHandler('cancel', cancel_registration)]
+        fallbacks={CommandHandler('cancel', cancel_registration)}
     )
 
     input_time_regex = '^([0-9][0-9])\.([0-9][0-9])$'
@@ -76,13 +71,10 @@ def main():
         entry_points=[CommandHandler('create_app', create_application), ],
         states={
             CreateApplicationFlow.REASON: [MessageHandler(Filters.text, application_reason)],
-
             CreateApplicationFlow.START_LOCATION: [MessageHandler(Filters.location, application_start_location)],
             CreateApplicationFlow.DESTINATION: [MessageHandler(Filters.location, application_destination)],
-            CreateApplicationFlow.START_TIME: [MessageHandler(Filters.regex(input_time_regex),
-                                                              application_start_time)],
+            CreateApplicationFlow.START_TIME: [MessageHandler(Filters.regex(input_time_regex), application_start_time)],
             CreateApplicationFlow.END_TIME: [MessageHandler(Filters.regex(input_time_regex), application_end_time)],
-
             CreateApplicationFlow.CHECK_APPLICATION: [
                 MessageHandler(Filters.regex(re.compile(r'^(да|нет)$', re.IGNORECASE)), application_check)],
 
@@ -92,42 +84,13 @@ def main():
     dispatcher.add_handler(CommandHandler('commands', commands))
     dispatcher.add_handler(CommandHandler(start.__name__, start))
 
-    dispatcher.add_handler(registration_handler)
     dispatcher.add_handler(create_application_handler)
+    dispatcher.add_handler(registration_handler)
     dispatcher.add_error_handler(error)
 
     updater.start_polling()
     logging.info('Bot polling has been started!')
     updater.idle()
-
-
-def check_database():
-    logging.info('Starting checking the database...')
-    try:
-        connection = psycopg2.connect(**DB_SETTINGS)
-        logging.info('Successfully connected to the database')
-        cursor = connection.cursor()
-        logging.info('Checking user_chats table')
-
-        cursor.execute("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name='user_chats')")
-        if not cursor.fetchone()[0]:
-            raise psycopg2.errors.UndefinedTable('table "user_chats" does not exist')
-        logging.info('Table user_chats exists')
-
-        cursor.execute("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name='users')")
-        if not cursor.fetchone()[0]:
-            raise psycopg2.errors.UndefinedTable('table "users" does not exist')
-        logging.info('Table users exists')
-
-        cursor.execute("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name='user_applications')")
-        if not cursor.fetchone()[0]:
-            raise psycopg2.errors.UndefinedTable('table "user_applications" does not exist')
-        logging.info('Table user_applications exists')
-
-    except Exception as exception:
-        logging.exception(exception)
-        exit(1)
-    logging.info('Database is checked')
 
 
 if __name__ == '__main__':
