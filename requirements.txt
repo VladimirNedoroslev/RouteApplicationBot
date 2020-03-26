@@ -1,0 +1,16 @@
+antiorm==1.2.1
+certifi==2019.11.28
+cffi==1.14.0
+cryptography==2.8
+db==0.1.1
+decorator==4.4.2
+future==0.18.2
+gevent==1.4.0
+greenlet==0.4.15
+Pillow==7.0.0
+psycopg2==2.8.4
+pycparser==2.20
+python-telegram-bot==12.4.2
+qrcode==6.1
+six==1.14.0
+tornado==6.0.4
