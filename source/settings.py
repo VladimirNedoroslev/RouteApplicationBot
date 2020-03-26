@@ -5,7 +5,7 @@ DB_SETTINGS = {
     'host': 'localhost',
     'port': '5432',
 }
-LOG_FORMAT = '%(levelname) -5s %(asctime)s %(name) -30s %(funcName) -35s %(lineno) -5d: %(message)s'
+LOG_FORMAT = '%(levelname) -5s %(asctime)s %(name) -15s %(funcName) -15s %(lineno) -5d: %(message)s'
 LOG_TIME_FORMAT = '%d/%m/%Y %H:%M:%S'
 
 INPUT_TIME_REGEX = '^([0-9]){1,2}\.([0-9]){1,2}$'
