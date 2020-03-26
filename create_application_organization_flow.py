@@ -1,0 +1,19 @@
+class ApplicationOrganizationFlow:
+    REASON = 1
+
+    ORGANIZATION_NAME = 2
+    ORGANIZATION_TIN = 3
+
+    CAR_NUMBER = 4
+    CAR_INFORMATION = 5
+
+    PASSENGERS_NAME = 6
+    PASSENGERS_PIN = 7
+
+    START_LOCATION = 8
+    END_LOCATION = 9
+
+    START_TIME = 10
+    END_TIME = 11
+
+    CHECK_APPLICATION = 12
