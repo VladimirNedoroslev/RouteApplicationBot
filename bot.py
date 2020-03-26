@@ -38,7 +38,7 @@ def commands(update, context):
 
 def error(update, context):
     """Log Errors caused by Updates."""
-    logging.warning('Update "%s" caused error "%s"', update, context.error)
+    logging.error('Update "%s" caused error: "%s"', update, context.error)
     update.message.reply_text('Я наткнулся на небольшую техническую неполадку, когда хотел ответить на эту команду. '
                               'Извиняюсь, но я не смогу её обработать.')
 
@@ -59,6 +59,7 @@ def main():
     updater = Updater(TELEGRAM_BOT_TOKEN, use_context=True)
     dispatcher = updater.dispatcher
 
+    logging.info('Adding bot handlers...')
     dispatcher.add_handler(CommandHandler('start', start))
     dispatcher.add_handler(CommandHandler('change_lang', change_lang))
     dispatcher.add_handler(CommandHandler('commands', commands))
@@ -70,6 +71,7 @@ def main():
     dispatcher.add_handler(get_create_organization_application_conversation_handler())
 
     dispatcher.add_error_handler(error)
+    logging.info('Finished added handlers, starting polling...')
 
     updater.start_polling()
     logging.info('Bot polling has been started!')
