@@ -6,7 +6,7 @@ import telegram
 from telegram import ParseMode, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Filters
 
-from application_sender import send_organization_application_and_get_url
+from application_sender import send_organization_application_and_get_response
 from create_application_flow import ApplicationForm
 from db_operations import user_exists_in_users
 from qr_coder import get_qrcode_from_string
@@ -176,7 +176,7 @@ def passenger_name(update, context):
     logging.info("Passenger name of %s (id = %s): %s", user.first_name, user.id, message_text)
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].passengers.append(Passenger(message_text))
     update.message.reply_text(
-        'Напишите ПИН пассажира (персональный идентификационный номер) он указан в паспорте ')
+        'Напишите ПИН пассажира (персональный идентификационный номер) он указан в паспорте')
     return PASSENGERS_PIN
 
 
@@ -205,26 +205,31 @@ def passenger_pin(update, context):
 
 
 def skip_passengers(update, context):
-    update.message.reply_text(
-        'Укажите геолокацию, где Вы находитесь. (Нажмите на скрепку, выберите "Геолокация" и укажите на карте Ваше местоположение)')
+    update.message.reply_text('Укажите место, где вы находитесь.')
     return START_LOCATION
 
 
 def application_start_location(update, context):
-    user = update.message.from_user
-    start_location = update.message.location
-    context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].start_location = start_location
+    message_text = update.message.text
+    if message_text == '/cancel':
+        return cancel(update, context)
 
-    logging.info("Start location of %s (id = %s): %s", user.first_name, user.id, start_location)
-    update.message.reply_text(
-        'Теперь укажите геолокацию места, куда Вы направляетесь. (так же, как и в предыдущем шаге)', )
+    context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].start_location = message_text
+
+    user = update.message.from_user
+    logging.info("Start location of %s (id = %s): %s", user.first_name, user.id, message_text)
+    update.message.reply_text('Теперь укажите место, куда Вы направлятесь', )
     return DESTINATION
 
 
 def destination(update, context):
-    user = update.message.from_user
-    context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].destination = update.message.location
+    message_text = update.message.text
+    if message_text == '/cancel':
+        return cancel(update, context)
 
+    context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].destination = message_text
+
+    user = update.message.from_user
     logging.info("Destination of %s (id = %s): %s", user.first_name, user.id,
                  context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].destination)
 
@@ -267,26 +272,19 @@ def application_end_time(update, context):
         update.message.reply_text(
             "Ваш маршрутный лист почти готов. Проверьте Ваши данные.\n<b>Причина</b>: {},\n<b>Название "
             "организации</b>: {}\n<b>ИНН организации</b>: {}\n<b>Номер машины</b>: {}\n<b>Марка и модель машины</b>: "
-            "{}\n<b>Пассажиры</b>: {}\n<b>Время выхода</b>: {},\n<b>Время возвращения</b>: {}".
+            "{}\n<b>Пассажиры</b>: {}\n<b>Место нахождения</b>: {}\n<b>Пункт назначения</b>: {}\n<b>Время выхода</b>: {},\n<b>Время возвращения</b>: {}".
                 format(application_form.reason,
                        application_form.organization_name,
                        application_form.organization_tin,
                        application_form.car_number,
                        application_form.car_info,
                        passengers,
+                       application_form.start_location,
+                       application_form.destination,
                        application_form.start_time,
                        application_form.end_time),
             reply_markup=ReplyKeyboardMarkup(reply_keyboard),
             parse_mode=ParseMode.HTML)
-
-        bot = telegram.Bot(TELEGRAM_BOT_TOKEN)
-        chat_id = update.effective_chat.id
-
-        update.message.reply_text('Место нахождения:')
-        bot.send_location(chat_id, location=application_form.start_location)
-
-        update.message.reply_text('Место направления:')
-        bot.send_location(chat_id, location=application_form.destination)
 
         update.message.reply_text('Всё ли верно? (да/нет)')
         return CHECK_APPLICATION
@@ -307,13 +305,17 @@ def get_passengers(passengers):
 
 def check_application(update, context):
     if update.message.text.lower() == 'да':
-        update.message.reply_text('Ваша заявка создана. Генерирую QR-код...',
+        update.message.reply_text('Ваш маршрутный лист создан. Генерирую QR-код...',
                                   reply_markup=ReplyKeyboardRemove()
                                   )
 
-        url = send_organization_application_and_get_url(str(update.message.from_user.id),
-                                                        context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM])
-        qr_code = get_qrcode_from_string(url)
+        response = send_organization_application_and_get_response(str(update.message.from_user.id),
+                                                                  context.user_data[
+                                                                      USER_DATA_APPLICATION_ORGANIZATION_FORM])
+        if response.status_code != 200:
+            update.message.reply_text('Упс, извините, у меня не получается сгенерировать QR-код. Но я исправлюсь!')
+            return ConversationHandler.END
+        qr_code = get_qrcode_from_string(response.content)
         bot = telegram.Bot(TELEGRAM_BOT_TOKEN)
         chat_id = update.effective_chat.id
         update.message.reply_text('Ваш QR-код для проверки маршуртного листа.')
@@ -347,8 +349,8 @@ def get_create_organization_application_conversation_handler():
                               CommandHandler('skip', skip_passengers)],
             PASSENGERS_PIN: [MessageHandler(Filters.text, passenger_pin),
                              CommandHandler('skip', skip_passengers)],
-            START_LOCATION: [MessageHandler(Filters.location, application_start_location)],
-            DESTINATION: [MessageHandler(Filters.location, destination)],
+            START_LOCATION: [MessageHandler(Filters.text, application_start_location)],
+            DESTINATION: [MessageHandler(Filters.text, destination)],
             START_TIME: {MessageHandler(Filters.regex(INPUT_TIME_REGEX), application_start_time)},
             END_TIME: [MessageHandler(Filters.regex(INPUT_TIME_REGEX), application_end_time)],
             CHECK_APPLICATION: [

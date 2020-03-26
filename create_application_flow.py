@@ -6,7 +6,7 @@ import telegram
 from telegram import ParseMode, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Filters
 
-from application_sender import send_application_and_get_url
+from application_sender import send_application_and_get_response
 from db_operations import user_exists_in_users
 from qr_coder import get_qrcode_from_string
 from settings import USER_DATA_APPLICATION_FORM, REASONS, TELEGRAM_BOT_TOKEN, INPUT_TIME_REGEX
@@ -55,7 +55,7 @@ def create_application(update, context):
         user = update.message.from_user
         logging.info("User %s (id = %s) has started a new application", user, user.id)
         update.message.reply_text(
-             'Вы начали составление маршрутного листа. Выберите причину выхода. Если Вашей причины нет в списке, '
+            'Вы начали составление маршрутного листа. Выберите причину выхода. Если Вашей причины нет в списке, '
             'то укажите её самостоятельно. Для отмены используйте команду /cancel',
             reply_markup=ReplyKeyboardMarkup(REASONS))
 
@@ -71,29 +71,30 @@ def application_reason(update, context):
     context.user_data[USER_DATA_APPLICATION_FORM].reason = message_text
     logging.info("Reason of %s (id = %s): %s", user.first_name, user.id, message_text)
 
-    update.message.reply_text(
-        'Укажите геолокацию, где Вы находитесь. (Нажмите на скрепку, выберите "Геолокация" и укажите на карте Ваше местоположение)',
-        reply_markup=ReplyKeyboardRemove())
+    update.message.reply_text('Укажите место, где вы находитесь.', reply_markup=ReplyKeyboardRemove())
     return START_LOCATION
 
 
 def application_start_location(update, context):
-    user = update.message.from_user
-    start_location = update.message.location
-    context.user_data[USER_DATA_APPLICATION_FORM].start_location = start_location
+    message_text = update.message.text
+    if message_text == '/cancel':
+        return cancel(update, context)
 
+    start_location = update.message.location
+    context.user_data[USER_DATA_APPLICATION_FORM].start_location = message_text
+    user = update.message.from_user
     logging.info("Start location of %s (id = %s): %s", user.first_name, user.id, start_location)
-    update.message.reply_text(
-        'Теперь укажите геолокацию места, куда Вы направлятесь. (так же, как и в предыдущем шаге)', )
+    update.message.reply_text('Теперь укажите место, куда Вы направлятесь', )
     return DESTINATION
 
 
 def application_destination(update, context):
+    message_text = update.message.text
+    if message_text == '/cancel':
+        return cancel(update, context)
+    context.user_data[USER_DATA_APPLICATION_FORM].destination = message_text
     user = update.message.from_user
-    destination = update.message.location
-    context.user_data[USER_DATA_APPLICATION_FORM].destination = destination
-
-    logging.info("Destination of %s (id = %s): %s", user.first_name, user.id, destination)
+    logging.info("Destination of %s (id = %s): %s", user.first_name, user.id, message_text)
 
     update.message.reply_text(
         'Когда Вы планируете выйти? (Укажите в формате ЧЧ.ММ, например <b>23.45</b> или <b>15.20</b>)',
@@ -135,19 +136,15 @@ def application_end_time(update, context):
         reply_keyboard = [['Да', 'Нет']]
         update.message.reply_text(
             'Ваш маршрутный лист почти готов. Проверьте Ваши данные.\n'
-            '<b>Причина</b>: {},\n<b>Дата выхода</b>: {},\n<b>Дата возвращения</b>: {}'.format(application_form.reason,
-                                                                                               application_form.start_time,
-                                                                                               application_form.end_time),
+            '<b>Причина</b>: {},\n<b>Место нахождения</b>: {},\n<b>Пункт назначения</b>: {},\n<b>Дата выхода</b>: {},'
+            '\n<b>Дата возвращения</b>: {}'.format(
+                application_form.reason,
+                application_form.start_location,
+                application_form.destination,
+                application_form.start_time,
+                application_form.end_time),
             reply_markup=ReplyKeyboardMarkup(reply_keyboard),
             parse_mode=ParseMode.HTML)
-        bot = telegram.Bot(TELEGRAM_BOT_TOKEN)
-        chat_id = update.effective_chat.id
-
-        update.message.reply_text('Место нахождения:')
-        bot.send_location(chat_id, location=application_form.start_location)
-
-        update.message.reply_text('Место направления:')
-        bot.send_location(chat_id, location=application_form.destination)
 
         update.message.reply_text('Всё ли верно? (да/нет)')
         return CHECK_APPLICATION
@@ -162,12 +159,16 @@ def check_application(update, context):
         update.message.reply_text('Ваш маршрутный лист создан. Генерирую QR-код...',
                                   reply_markup=ReplyKeyboardRemove())
 
-        url = send_application_and_get_url(str(update.message.from_user.id),
-                                           context.user_data[USER_DATA_APPLICATION_FORM])
-        qr_code = get_qrcode_from_string(url)
+        response = send_application_and_get_response(str(update.message.from_user.id),
+                                                     context.user_data[USER_DATA_APPLICATION_FORM])
+        if response.status_code != 200:
+            update.message.reply_text('Упс, извините, у меня не получается сгенерировать QR-код. Но я исправлюсь!')
+            return ConversationHandler.END
+        qr_code = get_qrcode_from_string(response.content)
+
+        update.message.reply_text('Ваш QR-код для проверки маршуртного листа.')
         bot = telegram.Bot(TELEGRAM_BOT_TOKEN)
         chat_id = update.effective_chat.id
-        update.message.reply_text('Ваш QR-код для проверки маршуртного листа.')
         bot.send_photo(chat_id, photo=qr_code)
         user = update.message.from_user
         logging.info("User %s (id = %s) has finished application_form.", user.first_name, user.id)
@@ -192,8 +193,8 @@ def get_create_application_conversation_handler():
         entry_points=[CommandHandler('create_app', create_application), ],
         states={
             REASON: [MessageHandler(Filters.text, application_reason)],
-            START_LOCATION: [MessageHandler(Filters.location, application_start_location)],
-            DESTINATION: [MessageHandler(Filters.location, application_destination)],
+            START_LOCATION: [MessageHandler(Filters.text, application_start_location)],
+            DESTINATION: [MessageHandler(Filters.text, application_destination)],
             START_TIME: [MessageHandler(Filters.regex(INPUT_TIME_REGEX), application_start_time)],
             END_TIME: [MessageHandler(Filters.regex(INPUT_TIME_REGEX), application_end_time)],
             CHECK_APPLICATION: [
