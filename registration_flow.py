@@ -59,7 +59,7 @@ def full_name(update, context):
     context.user_data[USER_DATA_REGISTRATION_FORM].full_name = name
 
     update.message.reply_text(
-        'Хорошо, {}, Теперь введите ваш ПИН (персональный идентификационный номер) он указан в паспорте (14 символов)'.format(
+        'Хорошо, {}, Теперь введите ваш ПИН (персональный идентификационный номер) он указан в паспорте (14 цифр)'.format(
             name))
 
     return PIN

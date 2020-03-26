@@ -113,7 +113,7 @@ def organization_name(update, context):
     logging.info("Organization name of %s (id = %s): %s", user.first_name, user.id, message_text)
 
     update.message.reply_text(
-        'Теперь напишите ИНН Вашей организации', )
+        'Теперь напишите ИНН Вашей организации (14 цифр)', )
     return ORGANIZATION_TIN
 
 
@@ -122,7 +122,7 @@ def organization_tin(update, context):
     if message_text == '/cancel':
         return cancel(update, context)
     if len(message_text) != 14:
-        update.message.reply_text('ИНН должен быть длиной 14 символов. Попробуйте ещё раз')
+        update.message.reply_text('ИНН должен быть длиной 14 цифр. Попробуйте ещё раз')
         return ORGANIZATION_TIN
     if not message_text.isnumeric():
         update.message.reply_text('ИНН содержит недопустимые символы. Попробуйте ещё раз ')
@@ -176,7 +176,7 @@ def passenger_name(update, context):
     logging.info("Passenger name of %s (id = %s): %s", user.first_name, user.id, message_text)
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].passengers.append(Passenger(message_text))
     update.message.reply_text(
-        'Напишите ПИН пассажира (персональный идентификационный номер) он указан в паспорте')
+        'Напишите ПИН пассажира (персональный идентификационный номер) он указан в паспорте (14 цифр)')
     return PASSENGERS_PIN
 
 
@@ -187,7 +187,7 @@ def passenger_pin(update, context):
     if message_text == '/skip':
         return skip_passengers(update, context)
     if len(message_text) != 14:
-        update.message.reply_text('Персональный номер должен быть длиной 14 символов. Попробуйте ещё раз')
+        update.message.reply_text('Персональный номер должен быть длиной 14 цифр. Попробуйте ещё раз')
         return PASSENGERS_PIN
     if not message_text.isnumeric():
         update.message.reply_text('Ваш персональный номер содержит недопустимые символы. Попробуйте ещё раз ')
