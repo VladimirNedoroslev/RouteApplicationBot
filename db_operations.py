@@ -55,12 +55,20 @@ def save_or_update_user_information(registration_form):
     connection.commit()
 
 
+def get_user_info(user_id):
+    connection = psycopg2.connect(**DB_SETTINGS)
+    cursor = connection.cursor()
+    cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+    return cursor.fetchone()
+
+
 def save_application(application_form):
     connection = psycopg2.connect(**DB_SETTINGS)
     cursor = connection.cursor()
     cursor.execute(
-        "INSERT INTO user_applications (id, user_id, reason, destination_longitude, destination_latitude, start_time, end_time, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s",
-        (uuid.uuid1(), application_form.user_id, application_form.reason, application_form.destination.longitude,
+        "INSERT INTO user_applications (id, user_id, reason, start_location_longitude, start_location_latitude, destination_longitude, destination_latitude, start_time, end_time, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s,%s",
+        (uuid.uuid1(), application_form.user_id, application_form.reason, application_form.start_location.longitude,
+         application_form.start_location.latitude, application_form.destination.longitude,
          application_form.destination.latitude, application_form.start_time, application_form.end_time, datetime.now()))
     connection.commit()
     logging.info(
