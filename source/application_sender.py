@@ -3,7 +3,7 @@ import logging
 
 from pip._vendor import requests
 
-from db_operations import get_user_info
+from db_operations import get_user
 from settings import API_ADDRESS
 
 PIN_REQUEST_FIELD = 'pin'
@@ -42,11 +42,11 @@ def send_application_and_get_response(user_id: str, application):
 
 
 def get_application_query_body(user_id, application):
-    user_info = get_user_info(user_id)
+    user_info = get_user(user_id)
     return {
-        PIN_REQUEST_FIELD: user_info[1],
-        FULLNAME_REQUEST_FIELD: user_info[2],
-        PHONE_NUMBER_REQUEST_FIELD: user_info[3],
+        PIN_REQUEST_FIELD: user_info[0],
+        FULLNAME_REQUEST_FIELD: user_info[1],
+        PHONE_NUMBER_REQUEST_FIELD: user_info[2],
         REASON_REQUEST_FIELD: application.reason,
         ADDRESS_REQUEST_FIELD: application.start_location,
         DESTINATION_REQUEST_FIELD: [application.destination],

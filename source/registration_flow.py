@@ -3,7 +3,7 @@ import logging
 from telegram import ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Filters
 
-from db_operations import save_or_update_user_information, user_exists_in_users
+from db_operations import save_or_update_user, user_exists
 from settings import USER_DATA_REGISTRATION_FORM
 
 
@@ -36,7 +36,7 @@ PHONE_NUMBER = 3
 
 
 def start_registration(update, context):
-    if user_exists_in_users(str(update.message.from_user.id)):
+    if user_exists(str(update.message.from_user.id)):
         update.message.reply_text(
             'Вы начали процесс изменения своих данных. Для отмены используйте команду /cancel')
     else:
@@ -104,14 +104,14 @@ def phone_number(update, context):
 
     logging.info(context.user_data[USER_DATA_REGISTRATION_FORM])
     if context.user_data[USER_DATA_REGISTRATION_FORM].is_complete():
-        save_or_update_user_information(context.user_data[USER_DATA_REGISTRATION_FORM])
+        save_or_update_user(context.user_data[USER_DATA_REGISTRATION_FORM])
     else:
         update.message.reply_text('При Вашей регистрации произошла ошибка. Попробуйте позже.')
     return ConversationHandler.END
 
 
 def cancel(update, context):
-    if user_exists_in_users(str(update.message.from_user.id)):
+    if user_exists(str(update.message.from_user.id)):
         update.message.reply_text(
             'Вы прервали процесс изменения своих данных. Запустить его снова можно через команду /change_info',
             reply_markup=ReplyKeyboardRemove())

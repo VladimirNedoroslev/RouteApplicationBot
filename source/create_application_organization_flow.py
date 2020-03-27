@@ -8,7 +8,7 @@ from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Fi
 
 from application_sender import send_organization_application_and_get_response
 from create_application_flow import ApplicationForm
-from db_operations import user_exists_in_users
+from db_operations import user_exists
 from qr_coder import get_qrcode_from_string
 from settings import USER_DATA_APPLICATION_ORGANIZATION_FORM, REASONS, TELEGRAM_BOT_TOKEN
 
@@ -77,7 +77,7 @@ CHECK_APPLICATION = 12
 
 def create_application(update, context):
     user_id = str(update.message.from_user.id)
-    if not user_exists_in_users(user_id):
+    if not user_exists(user_id):
         update.message.reply_text(
             'Вы не можете составлять маршрутные листы пока не закончите регистрацию.'
             'Для этого выполните команду /register.')

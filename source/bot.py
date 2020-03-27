@@ -9,7 +9,7 @@ from telegram.ext import (Updater, CommandHandler)
 
 from create_application_flow import get_create_application_conversation_handler
 from create_application_organization_flow import get_create_organization_application_conversation_handler
-from db_operations import save_new_user_to_db, check_database
+from db_operations import check_database
 from registration_flow import get_registration_conversation_handler
 from settings import TELEGRAM_BOT_TOKEN, LOG_TIME_FORMAT, LOG_FORMAT
 
@@ -25,10 +25,6 @@ COMMANDS_TEXT = """Мне доступны следующие команды:
 
 
 def start(update, context):
-    chat_id = update.effective_chat.id
-    user_id = str(update.message.from_user.id)
-
-    save_new_user_to_db(user_id=user_id, chat_id=chat_id)
     update.message.reply_text(
         'Привет, я могу помочь Вам с сотавлением электронных маршрутных листов.\n{}'.format(COMMANDS_TEXT))
 
