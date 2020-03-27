@@ -42,14 +42,14 @@ class ApplicationOrganizationForm(ApplicationForm):
 class Passenger:
 
     def __init__(self, full_name):
-        self.full_name = full_name
+        self.fullName = full_name
         self.pin = None
 
     def __str__(self):
-        return '{} {}'.format(self.full_name, self.pin)
+        return '{} {}'.format(self.fullName, self.pin)
 
     def __repr__(self):
-        return '{} {}'.format(self.full_name, self.pin)
+        return '{} {}'.format(self.fullName, self.pin)
 
 
 REASON = 1

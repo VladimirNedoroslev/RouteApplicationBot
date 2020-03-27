@@ -35,7 +35,7 @@ def get_application_query_body(user_id, application):
         'destinationAddressesList': [application.destination],
         'startTime': application.start_time,
         'endTime': application.end_time,
-        'tripPurpose': [application.reason],
+        'tripPurpose': application.reason,
     }
 
 
@@ -45,7 +45,7 @@ def get_application_organization_query_body(user_id, application):
     result['organizationName'] = application.organization_name
     result['carStateNumber'] = application.car_number
     result['carInformation'] = application.car_info
-    result['passengers'] = []
+    result['passengersList'] = []
     for passenger in application.passengers:
-        result['passengers'].append(passenger.__dict__)
+        result['passengersList'].append(passenger.__dict__)
     return result
