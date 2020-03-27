@@ -137,7 +137,7 @@ def application_end_time(update, context):
 
         end_time = datetime.now().replace(hour=input_time.hour, minute=input_time.minute, second=0,
                                           microsecond=0)
-        if end_time < context.user_data[USER_DATA_APPLICATION_FORM].start_time:
+        if end_time <= context.user_data[USER_DATA_APPLICATION_FORM].start_time:
             update.message.reply_text('Время прибытия не может быть меньше времени выхода')
             return END_TIME
         context.user_data[USER_DATA_APPLICATION_FORM].end_time = end_time
