@@ -13,7 +13,7 @@ ADDRESS_REQUEST_FIELD = 'address'
 DESTINATION_REQUEST_FIELD = 'destinationAddressesList'
 START_TIME_REQUEST_FIELD = 'startTime'
 END_TIME_REQUEST_FIELD = 'endTime'
-TRIP_PURPOSE_REQUEST_FIELD = 'tripPurpose'
+REASON_REQUEST_FIELD = 'tripPurpose'
 ORGANIZATION_TIN_REQUEST_FIELD = 'organizationTin'
 ORGANIZATION_NAME_REQUEST_FIELD = 'organizationName'
 CAR_STATE_NUMBER_REQUEST_FIELD = 'carStateNumber'
@@ -47,11 +47,11 @@ def get_application_query_body(user_id, application):
         PIN_REQUEST_FIELD: user_info[1],
         FULLNAME_REQUEST_FIELD: user_info[2],
         PHONE_NUMBER_REQUEST_FIELD: user_info[3],
+        REASON_REQUEST_FIELD: application.reason,
         ADDRESS_REQUEST_FIELD: application.start_location,
         DESTINATION_REQUEST_FIELD: [application.destination],
         START_TIME_REQUEST_FIELD: application.start_time.isoformat(),
         END_TIME_REQUEST_FIELD: application.end_time.isoformat(),
-        TRIP_PURPOSE_REQUEST_FIELD: application.reason,
     }
 
 

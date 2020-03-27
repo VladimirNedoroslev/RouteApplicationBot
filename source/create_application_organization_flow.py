@@ -10,7 +10,7 @@ from application_sender import send_organization_application_and_get_response
 from create_application_flow import ApplicationForm
 from db_operations import user_exists_in_users
 from qr_coder import get_qrcode_from_string
-from settings import USER_DATA_APPLICATION_ORGANIZATION_FORM, REASONS, TELEGRAM_BOT_TOKEN, INPUT_TIME_REGEX
+from settings import USER_DATA_APPLICATION_ORGANIZATION_FORM, REASONS, TELEGRAM_BOT_TOKEN
 
 
 class ApplicationOrganizationForm(ApplicationForm):
@@ -50,6 +50,9 @@ class Passenger:
 
     def __repr__(self):
         return '{} {}'.format(self.full_name, self.pin)
+
+    def is_complete(self):
+        return all([self.full_name, self.pin])
 
 
 REASON = 1
@@ -240,9 +243,10 @@ def destination(update, context):
 
 
 def application_start_time(update, context):
-    user = update.message.from_user
     try:
         message_text = update.message.text
+        if message_text == '/cancel':
+            return cancel(update, context)
         if len(message_text) != 5:
             raise ValueError
         current_time = datetime.now()
@@ -254,21 +258,25 @@ def application_start_time(update, context):
             return START_TIME
 
         context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].start_time = start_time
+
+        user = update.message.from_user
         logging.info("Start time of %s (id = %s): %s", user.first_name, user.id, message_text)
+
         update.message.reply_text(
             'Когда Вы планируете вернуться? (Укажите в формате ЧЧ.ММ, например <b>23.45</b> или <b>15.20</b>)',
             parse_mode=ParseMode.HTML)
         return END_TIME
-    except ValueError as exception:
+    except ValueError:
         update.message.reply_text('Пожалуйста укажите время в формате ЧЧ.ММ (например <b>23.45</b> или <b>15.20</b>)',
                                   parse_mode=ParseMode.HTML)
         return START_TIME
 
 
 def application_end_time(update, context):
-    user = update.message.from_user
     try:
         message_text = update.message.text
+        if message_text == '/cancel':
+            return cancel(update, context)
         if len(message_text) != 5:
             raise ValueError
         input_time = datetime.strptime(message_text, "%H.%M")
@@ -280,69 +288,74 @@ def application_end_time(update, context):
         elif end_time == context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].start_time:
             update.message.reply_text('Время прибытия не может быть равным времени выхода')
             return END_TIME
+
         context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].end_time = end_time
+
+        user = update.message.from_user
         logging.info("End time of %s (id = %s): %s", user.first_name, user.id, message_text)
 
         application_form = context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM]
-        passengers = get_passengers(application_form.passengers)
         reply_keyboard = [['Да', 'Нет']]
         update.message.reply_text(
             "Ваш маршрутный лист почти готов. Проверьте Ваши данные.\n<b>Причина</b>: {},\n<b>Название "
             "организации</b>: {}\n<b>ИНН организации</b>: {}\n<b>Номер машины</b>: {}\n<b>Марка и модель машины</b>: "
-            "{}\n<b>Пассажиры</b>: {}\n<b>Место нахождения</b>: {}\n<b>Пункт назначения</b>: {}\n<b>Время выхода</b>: {},\n<b>Время возвращения</b>: {}".
-                format(application_form.reason,
-                       application_form.organization_name,
-                       application_form.organization_tin,
-                       application_form.car_number,
-                       application_form.car_info,
-                       passengers,
-                       application_form.start_location,
-                       application_form.destination,
-                       application_form.start_time,
-                       application_form.end_time),
+            "{}\n<b>Пассажиры</b>: {}\n<b>Место нахождения</b>: {}\n<b>Пункт назначения</b>: {}\n<b>Время выхода</b>: "
+            "{},\n<b>Время возвращения</b>: {}".format(application_form.reason,
+                                                       application_form.organization_name,
+                                                       application_form.organization_tin,
+                                                       application_form.car_number,
+                                                       application_form.car_info,
+                                                       passengers_to_str(application_form.passengers),
+                                                       application_form.start_location,
+                                                       application_form.destination,
+                                                       application_form.start_time,
+                                                       application_form.end_time),
             reply_markup=ReplyKeyboardMarkup(reply_keyboard),
             parse_mode=ParseMode.HTML)
 
         update.message.reply_text('Всё ли верно? (да/нет)')
         return CHECK_APPLICATION
-    except ValueError as exception:
+    except ValueError:
         update.message.reply_text('Пожалуйста укажите время в формате ЧЧ.ММ (например <b>23.45</b> или <b>15.20</b>)',
                                   parse_mode=ParseMode.HTML)
         return END_TIME
 
 
-def get_passengers(passengers):
-    if not passengers:
+def passengers_to_str(passengers):
+    if not passengers or (len(passengers) == 1 and not passengers[0].is_complete()):
         return '<i>нет пассажиров</i>'
     str_list = []
     for passenger in passengers:
-        str_list.append(passenger.__str__())
+        if passenger.is_complete():
+            str_list.append(passenger.__str__())
     return ', '.join(str_list)
 
 
 def check_application(update, context):
-    if update.message.text.lower() == 'да':
-        update.message.reply_text('Ваш маршрутный лист создан. Генерирую QR-код...',
-                                  reply_markup=ReplyKeyboardRemove()
-                                  )
+    message_text = update.message.text = update.message.text.lower()
+    if message_text == 'да' or message_text == 'da':
+        update.message.reply_text('Ваш маршрутный лист составлен. Генерирую QR-код...',
+                                  reply_markup=ReplyKeyboardRemove())
 
         response = send_organization_application_and_get_response(str(update.message.from_user.id),
                                                                   context.user_data[
                                                                       USER_DATA_APPLICATION_ORGANIZATION_FORM])
-        if response.status_code != 200:
-            update.message.reply_text('Упс, извините, у меня не получается сгенерировать QR-код. Но я исправлюсь!')
-            return ConversationHandler.END
-        qr_code = get_qrcode_from_string(response.content)
-        bot = telegram.Bot(TELEGRAM_BOT_TOKEN)
-        chat_id = update.effective_chat.id
-        bot.send_photo(chat_id, photo=qr_code, caption='Ваш QR-код для проверки маршуртного листа')
-        user = update.message.from_user
-        logging.info("User %s (id = %s) has finished organization application_form.", user.first_name, user.id)
-    else:
-        update.message.reply_text(
-            'Вы можете снова составить маршрутный лист для организации через команду /create_org_app',
-            reply_markup=ReplyKeyboardRemove()
-        )
+        if response.status_code == 200:
+            qr_code = get_qrcode_from_string(response.content)
+            bot = telegram.Bot(TELEGRAM_BOT_TOKEN)
+            chat_id = update.effective_chat.id
+            bot.send_photo(chat_id, photo=qr_code, caption='Ваш QR-код для проверки маршуртного листа')
+            user = update.message.from_user
+            logging.info("User %s (id = %s) has finished organization application_form.", user.first_name, user.id)
+        else:
+            if response.status_code == 503:
+                update.message.reply_text('Извините, сейчас я не могу сгенерировать Ваш QR-код, попробуйте позже')
+                return ConversationHandler.END
+            update.message.reply_text('Извините, у меня не получается сгенерировать QR-код. Но я исправлюсь!')
+
+    update.message.reply_text(
+        'Вы можете снова составить маршрутный лист для организации через команду /create_org_app',
+        reply_markup=ReplyKeyboardRemove())
 
     return ConversationHandler.END
 
@@ -367,8 +380,8 @@ def get_create_organization_application_conversation_handler():
                              CommandHandler('skip', skip_passengers)],
             START_LOCATION: [MessageHandler(Filters.text, application_start_location)],
             DESTINATION: [MessageHandler(Filters.text, destination)],
-            START_TIME: {MessageHandler(Filters.regex(INPUT_TIME_REGEX), application_start_time)},
-            END_TIME: [MessageHandler(Filters.regex(INPUT_TIME_REGEX), application_end_time)],
+            START_TIME: {MessageHandler(Filters.text, application_start_time)},
+            END_TIME: [MessageHandler(Filters.text, application_end_time)],
             CHECK_APPLICATION: [
                 MessageHandler(Filters.regex(re.compile(r'^(да|нет)$', re.IGNORECASE)), check_application)],
         },
