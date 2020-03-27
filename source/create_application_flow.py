@@ -107,10 +107,10 @@ def application_start_time(update, context):
         message_text = update.message.text
         if len(message_text) != 5:
             raise ValueError
+        current_time = datetime.now()
         input_time = datetime.strptime(message_text, "%H.%M")
-        start_time = datetime.now().replace(hour=input_time.hour, minute=input_time.minute, second=0,
-                                            microsecond=0)
-        if start_time < datetime.now():
+        start_time = current_time.replace(hour=input_time.hour, minute=input_time.minute, second=0, microsecond=0)
+        if start_time.minute != current_time.minute and start_time < current_time:
             update.message.reply_text('Вы указали время меньше текущего')
             return START_TIME
         context.user_data[USER_DATA_APPLICATION_FORM].start_time = start_time
