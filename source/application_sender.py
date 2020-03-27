@@ -35,8 +35,8 @@ def get_application_query_body(user_id, application):
         'phoneNumber': user_info[3],
         'address': application.start_location,
         'destinationAddressesList': [application.destination],
-        'startTime': application.start_time,
-        'endTime': application.end_time,
+        'startTime': application.start_time.isoformat(),
+        'endTime': application.end_time.isoformat(),
         'tripPurpose': application.reason,
     }
 

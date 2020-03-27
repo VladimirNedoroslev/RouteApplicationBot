@@ -205,7 +205,7 @@ def passenger_pin(update, context):
 
 
 def skip_passengers(update, context):
-    update.message.reply_text('Напишите адрес места, где вы находитесь.')
+    update.message.reply_text('Напишите ваш текущий адрес')
     return START_LOCATION
 
 
@@ -218,7 +218,7 @@ def application_start_location(update, context):
 
     user = update.message.from_user
     logging.info("Start location of %s (id = %s): %s", user.first_name, user.id, message_text)
-    update.message.reply_text('Теперь напишите адрес места, куда Вы направлятесь', )
+    update.message.reply_text('Теперь напишите адрес, куда Вы направляетесь', )
     return DESTINATION
 
 
@@ -247,10 +247,13 @@ def application_start_time(update, context):
             raise ValueError
         input_time = datetime.strptime(message_text, "%H.%M")
         start_time = datetime.now().replace(hour=input_time.hour, minute=input_time.minute, second=0, microsecond=0)
-        context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].start_time = start_time.isoformat()
 
+        if start_time < datetime.now():
+            update.message.reply_text('Вы указали время меньше текущего')
+            return START_TIME
+
+        context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].start_time = start_time
         logging.info("Start time of %s (id = %s): %s", user.first_name, user.id, message_text)
-
         update.message.reply_text(
             'Когда Вы планируете вернуться? (Укажите в формате ЧЧ.ММ, например <b>23.45</b> или <b>15.20</b>)',
             parse_mode=ParseMode.HTML)
@@ -268,8 +271,12 @@ def application_end_time(update, context):
         if len(message_text) != 5:
             raise ValueError
         input_time = datetime.strptime(message_text, "%H.%M")
+
         end_time = datetime.now().replace(hour=input_time.hour, minute=input_time.minute, second=0, microsecond=0)
-        context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].end_time = end_time.isoformat()
+        if end_time < context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].start_time:
+            update.message.reply_text('Время прибытия не может быть меньше времени выхода')
+            return END_TIME
+        context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].end_time = end_time
         logging.info("End time of %s (id = %s): %s", user.first_name, user.id, message_text)
 
         application_form = context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM]
@@ -324,8 +331,7 @@ def check_application(update, context):
         qr_code = get_qrcode_from_string(response.content)
         bot = telegram.Bot(TELEGRAM_BOT_TOKEN)
         chat_id = update.effective_chat.id
-        update.message.reply_text('Ваш QR-код для проверки маршуртного листа.')
-        bot.send_photo(chat_id, photo=qr_code)
+        bot.send_photo(chat_id, photo=qr_code, caption='Ваш QR-код для проверки маршуртного листа')
         user = update.message.from_user
         logging.info("User %s (id = %s) has finished organization application_form.", user.first_name, user.id)
     else:
