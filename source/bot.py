@@ -11,17 +11,31 @@ from create_application_flow import get_create_application_conversation_handler
 from create_application_organization_flow import get_create_organization_application_conversation_handler
 from db_operations import check_database
 from registration_flow import get_registration_conversation_handler
-from settings import TELEGRAM_BOT_TOKEN, LOG_TIME_FORMAT, LOG_FORMAT
+from settings import (TELEGRAM_BOT_TOKEN, LOG_TIME_FORMAT, LOG_FORMAT, CHANGE_LANGUAGE_COMMAND, VIEW_COMMANDS_COMMAND,
+                      HELP_COMMAND, HELP_VIDEO_COMMAND, REGISTRATION_COMMAND, CHANGE_INFO_COMMAND,
+                      CREATE_APPLICATION_COMMAND, CREATE_ORGANIZATION_APPLICATION_COMMAND, CANCEL_COMMAND, SKIP_COMMAND)
 
 COMMANDS_TEXT = """Мне доступны следующие команды:
-/change_lang - изменить язык
-/register - зарегистрироваться
-/change_info - изменить информацию о себе
-/create_app - составить маршрутный лист для физического лица
-/create_org_app - составить маршрутный лист для юридических лиц
-/help - как работать с этим чат ботом
-/help_video - видео-инструкция
-/commands - посмотреть список команд"""
+/{} - изменить язык
+/{} - зарегистрироваться
+/{} - изменить информацию о себе
+/{} - составить маршрутный лист для физического лица
+/{} - составить маршрутный лист для юридических лиц
+/{} - как работать с этим чат ботом
+/{} - видео-инструкция
+/{} - посмотреть список команд
+/{} - cancel отменить текущую операцию
+/{} - пропустить шаг, если возможно""".format(
+    CHANGE_LANGUAGE_COMMAND,
+    REGISTRATION_COMMAND,
+    CHANGE_INFO_COMMAND,
+    CREATE_APPLICATION_COMMAND,
+    CREATE_ORGANIZATION_APPLICATION_COMMAND,
+    HELP_COMMAND,
+    HELP_VIDEO_COMMAND,
+    VIEW_COMMANDS_COMMAND,
+    CANCEL_COMMAND,
+    SKIP_COMMAND)
 
 
 def start(update, context):
@@ -58,10 +72,10 @@ def main():
 
     logging.info('Adding bot handlers...')
     dispatcher.add_handler(CommandHandler('start', start))
-    dispatcher.add_handler(CommandHandler('change_lang', change_lang))
-    dispatcher.add_handler(CommandHandler('commands', commands))
-    dispatcher.add_handler(CommandHandler('help', help))
-    dispatcher.add_handler(CommandHandler('help_video', help_video))
+    dispatcher.add_handler(CommandHandler(CHANGE_LANGUAGE_COMMAND, change_lang))
+    dispatcher.add_handler(CommandHandler(VIEW_COMMANDS_COMMAND, commands))
+    dispatcher.add_handler(CommandHandler(HELP_COMMAND, help))
+    dispatcher.add_handler(CommandHandler(HELP_VIDEO_COMMAND, help_video))
 
     dispatcher.add_handler(get_registration_conversation_handler())
     dispatcher.add_handler(get_create_application_conversation_handler())
