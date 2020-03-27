@@ -12,7 +12,7 @@ API_ADDRESS = 'https://ml.tunduk.kg/Applications/Create'
 
 CHECK_RESPONSE_REGEX = r'^(да|нет|da|net)$'
 
-TELEGRAM_BOT_TOKEN = '1136839213:AAHjwAgCJAqIjn22VCuhkhyHpUWlC8b3rso'
+TELEGRAM_BOT_TOKEN = ''
 
 USER_DATA_REGISTRATION_FORM = 'registration_form'
 USER_DATA_APPLICATION_FORM = 'application_form'
