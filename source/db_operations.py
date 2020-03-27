@@ -81,17 +81,18 @@ def check_database():
         connection = psycopg2.connect(**DB_SETTINGS)
         logging.info('Successfully connected to the database')
         cursor = connection.cursor()
-        logging.info('Checking user_chats table')
+        logging.info('Checking "user_chats" table')
 
         cursor.execute("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name='user_chats')")
         if not cursor.fetchone()[0]:
             raise psycopg2.errors.UndefinedTable('table "user_chats" does not exist')
-        logging.info('Table user_chats exists')
+        logging.info('Table "user_chats" exists')
 
+        logging.info('Checking "users" table')
         cursor.execute("SELECT EXISTS(SELECT * FROM information_schema.tables WHERE table_name='users')")
         if not cursor.fetchone()[0]:
             raise psycopg2.errors.UndefinedTable('table "users" does not exist')
-        logging.info('Table users exists')
+        logging.info('Table "users" exists')
 
 
     except Exception as exception:
