@@ -17,22 +17,25 @@ def user_exists(user_id: str, connection=None):
         return False
 
 
-def save_or_update_user(registration_form):
+def save_user(user_id, chat_id, registration_form):
     connection = psycopg2.connect(**DB_SETTINGS)
     cursor = connection.cursor()
-    if not user_exists(registration_form.user_id, connection):
-        cursor.execute(
-            "INSERT INTO users (id, pin, full_name, phone_number, created_at) VALUES (%s, %s, %s, %s, %s);",
-            (registration_form.user_id, registration_form.pin, registration_form.full_name,
-             registration_form.phone_number, datetime.now()))
-        logging.info("New user has been inserted into the database. ({})".format(registration_form))
-    else:
-        cursor.execute(
-            "UPDATE users SET pin=%s, full_name=%s, phone_number=%s WHERE id = %s;",
-            (registration_form.pin, registration_form.full_name, registration_form.phone_number,
-             registration_form.user_id))
-        logging.info("User (id = {}) has been updated. ({})".format(registration_form.user_id, registration_form))
+    cursor.execute(
+        "INSERT INTO users (id, chat_id, pin, full_name, phone_number, created_at) VALUES (%s, %s, %s, %s, %s, %s);",
+        (user_id, chat_id, registration_form.pin, registration_form.full_name,
+         registration_form.phone_number, datetime.now()))
     connection.commit()
+    logging.info("New user (id = {}) has been inserted into the database. ({})".format(user_id, registration_form))
+
+
+def update_user(user_id, registration_form):
+    connection = psycopg2.connect(**DB_SETTINGS)
+    cursor = connection.cursor()
+    cursor.execute(
+        "UPDATE users SET pin=%s, full_name=%s, phone_number=%s WHERE id = %s;",
+        (registration_form.pin, registration_form.full_name, registration_form.phone_number, user_id))
+    connection.commit()
+    logging.info("User (id = {}) has been updated. ({})".format(user_id, registration_form))
 
 
 def get_user(user_id):

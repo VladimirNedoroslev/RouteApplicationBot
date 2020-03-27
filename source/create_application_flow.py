@@ -11,7 +11,7 @@ from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Fi
 from application_sender import send_application_and_get_response
 from db_operations import user_exists
 from qr_coder import get_qrcode_from_string
-from settings import USER_DATA_APPLICATION_FORM, REASONS, TELEGRAM_BOT_TOKEN
+from settings import USER_DATA_APPLICATION_FORM, REASONS, TELEGRAM_BOT_TOKEN, CHECK_RESPONSE_REGEX
 
 
 class ApplicationForm:
@@ -36,11 +36,6 @@ class ApplicationForm:
                                                                                                     self.end_time,
                                                                                                     self.start_location,
                                                                                                     self.destination)
-    #
-    # def to_ready_text(self):
-    #     return 'Ваш маршрутный лист почти готов. Проверьте Ваши данные.\n<b>Причина</b>: {},\n<b>Место ' \
-    #            'нахождения</b>: {},\n<b>Пункт назначения</b>: {},\n<b>Дата выхода</b>: {},\n<b>Дата возвращения</b>:' \
-    #            ' {}'.format(self.reason, self.start_location, self.destination, self.start_time, self.end_time),
 
 
 REASON = 'reason'
@@ -53,14 +48,9 @@ CHECK_APPLICATION = 'check_application'
 
 def create_application(update, context):
     user_id = str(update.message.from_user.id)
-    if not user_exists(user_id):
-        update.message.reply_text(
-            'Вы не можете составлять маршрутные листы пока не закончите регистрацию.'
-            'Для этого выполните команду /register.')
-        return ConversationHandler.END
-    else:
+    if user_exists(user_id):
         user = update.message.from_user
-        logging.info("User %s (id = %s) has started a new application", user, user.id)
+        logging.info("User %s (id = %s) has started a new application", user, user_id)
         update.message.reply_text(
             'Вы начали составление маршрутного листа. Выберите причину выхода. Если Вашей причины нет в списке, '
             'то укажите её самостоятельно. Для отмены используйте команду /cancel',
@@ -68,14 +58,19 @@ def create_application(update, context):
 
         context.user_data[USER_DATA_APPLICATION_FORM] = ApplicationForm()
         return REASON
+    else:
+        update.message.reply_text('Вы не можете составлять маршрутные листы пока не закончите регистрацию. Для этого '
+                                  'выполните команду /register.')
+        return ConversationHandler.END
 
 
 def ask_reason(update, context):
     message_text = update.message.text
     if message_text == '/cancel':
         return cancel(update, context)
-    user = update.message.from_user
     context.user_data[USER_DATA_APPLICATION_FORM].reason = message_text
+
+    user = update.message.from_user
     logging.info("Reason of %s (id = %s): %s", user.first_name, user.id, message_text)
 
     update.message.reply_text('Напишите ваш текущий адрес', reply_markup=ReplyKeyboardRemove())
@@ -88,8 +83,10 @@ def ask_start_location(update, context):
         return cancel(update, context)
 
     context.user_data[USER_DATA_APPLICATION_FORM].start_location = message_text
+
     user = update.message.from_user
     logging.info("Start location of %s (id = %s): %s", user.first_name, user.id, message_text)
+
     update.message.reply_text('Теперь напишите адрес, куда Вы направляетесь', )
     return DESTINATION
 
@@ -98,7 +95,9 @@ def ask_destination(update, context):
     message_text = update.message.text
     if message_text == '/cancel':
         return cancel(update, context)
+
     context.user_data[USER_DATA_APPLICATION_FORM].destination = message_text
+
     user = update.message.from_user
     logging.info("Destination of %s (id = %s): %s", user.first_name, user.id, message_text)
 
@@ -115,12 +114,14 @@ def ask_start_time(update, context):
             return cancel(update, context)
         if len(message_text) != 5:
             raise ValueError
+
         current_time = datetime.now()
         input_time = datetime.strptime(message_text, "%H.%M")
         start_time = current_time.replace(hour=input_time.hour, minute=input_time.minute, second=0, microsecond=0)
         if start_time.minute != current_time.minute and start_time < current_time:
             update.message.reply_text('Вы указали время меньше текущего')
             return START_TIME
+
         context.user_data[USER_DATA_APPLICATION_FORM].start_time = start_time
 
         user = update.message.from_user
@@ -147,12 +148,14 @@ def ask_end_time(update, context):
 
         end_time = datetime.now().replace(hour=input_time.hour, minute=input_time.minute, second=0,
                                           microsecond=0)
+
         if end_time < context.user_data[USER_DATA_APPLICATION_FORM].start_time:
             update.message.reply_text('Время прибытия не может быть меньше времени выхода')
             return END_TIME
         elif end_time == context.user_data[USER_DATA_APPLICATION_FORM].start_time:
             update.message.reply_text('Время прибытия не может быть равным времени выхода')
             return END_TIME
+
         context.user_data[USER_DATA_APPLICATION_FORM].end_time = end_time
 
         user = update.message.from_user
@@ -182,8 +185,9 @@ def ask_end_time(update, context):
 
 
 def ask_check_application(update, context):
-    message_text = update.message.text = update.message.text.lower()
+    message_text = update.message.text.lower()
     if message_text == 'да' or message_text == 'da':
+
         update.message.reply_text('Ваш маршрутный лист составлен! Генерирую QR-код...',
                                   reply_markup=ReplyKeyboardRemove())
 
@@ -210,7 +214,7 @@ def ask_check_application(update, context):
 
 def cancel(update, context):
     update.message.reply_text(
-        'Вы прервали создание заяки. Для того чтобы заполнить заявку введите команду /create_app.',
+        'Вы отменили составление маршрутного листа. Вы можете составить маршрутный лист через команду /create_app.',
         reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
@@ -225,7 +229,7 @@ def get_create_application_conversation_handler():
             START_TIME: [MessageHandler(Filters.text, ask_start_time)],
             END_TIME: [MessageHandler(Filters.text, ask_end_time)],
             CHECK_APPLICATION: [
-                MessageHandler(Filters.regex(re.compile(r'^(да|нет)$', re.IGNORECASE)), ask_check_application)],
+                MessageHandler(Filters.regex(re.compile(CHECK_RESPONSE_REGEX, re.IGNORECASE)), ask_check_application)],
 
         },
         fallbacks=[CommandHandler('cancel', cancel)]
