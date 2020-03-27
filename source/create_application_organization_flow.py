@@ -23,8 +23,8 @@ class ApplicationOrganizationForm(ApplicationForm):
         self.passengers = []
 
     def is_complete(self) -> bool:
-        return all([self.reason, self.organization_name, self.organization_tin, self.car_number, self.car_info,
-                    self.passengers, self.start_location, self.destination, self.start_time, self.end_time])
+        return all([super().is_complete(), self.organization_name, self.organization_tin, self.car_number,
+                    self.car_info, self.passengers])
 
     def reset(self):
         self.__init__()
