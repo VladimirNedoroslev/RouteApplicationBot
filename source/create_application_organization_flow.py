@@ -159,9 +159,9 @@ def car_information(update, context):
     logging.info("Car information of %s (id = %s): %s", user.first_name, user.id, message_text)
 
     update.message.reply_text(
-        'Теперь нужно ввести данные граждан, которые будут с вами будут следовать на машине (пассажиры).\n'
+        'Теперь нужно ввести данные граждан, которые будут с вами следовать на машине (пассажиры).\n'
         'Напишите ФИО пасскажира.\n\n'
-        'Если у Вас не будет пассажиров или вы уже всех указали, то нажмите /skip.', )
+        'Если у Вас не будет пассажиров или вы уже всех указали, то используйте команду /skip.', )
     return PASSENGERS_NAME
 
 
@@ -200,12 +200,12 @@ def passenger_pin(update, context):
     update.message.reply_text(
         'Отлично! Вы добавили пассажира к маршрутному листу.\n'
         'Напишите ФИО следующего пассажира.\n\n'
-        'Если у Вас больше не будет пассажиров, то нажмите /skip')
+        'Если у Вас больше не будет пассажиров, то используйте команду /skip')
     return PASSENGERS_NAME
 
 
 def skip_passengers(update, context):
-    update.message.reply_text('Укажите место, где вы находитесь.')
+    update.message.reply_text('Напишите адрес места, где вы находитесь.')
     return START_LOCATION
 
 
@@ -218,7 +218,7 @@ def application_start_location(update, context):
 
     user = update.message.from_user
     logging.info("Start location of %s (id = %s): %s", user.first_name, user.id, message_text)
-    update.message.reply_text('Теперь укажите место, куда Вы направлятесь', )
+    update.message.reply_text('Теперь напишите адрес места, куда Вы направлятесь', )
     return DESTINATION
 
 

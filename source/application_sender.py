@@ -12,7 +12,8 @@ def send_organization_application_and_get_response(user_id: str, application):
     headers = {'Content-type': "application/json"}
     logging.info('sending organization_application({}) to {}'.format(json_body, API_ADDRESS))
     response = requests.post(API_ADDRESS, data=json_body, headers=headers)
-    logging.info('response: status_code = {}, content = {}'.format(response.status_code, response.content))
+    logging.info(
+        'response: status_code = {}, content = {}'.format(response.status_code, response.content.decode("utf-8")))
     return response
 
 
@@ -21,7 +22,8 @@ def send_application_and_get_response(user_id: str, application):
     headers = {'Content-type': "application/json"}
     logging.info('sending application({}) to {}'.format(json_body, API_ADDRESS))
     response = requests.post(API_ADDRESS, data=json_body, headers=headers)
-    logging.info('response: status_code = {}, content = {}'.format(response.status_code, response.content))
+    logging.info(
+        'response: status_code = {}, content = {}'.format(response.status_code, response.content.decode("utf-8")))
     return response
 
 

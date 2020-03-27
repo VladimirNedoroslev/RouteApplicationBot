@@ -71,7 +71,7 @@ def application_reason(update, context):
     context.user_data[USER_DATA_APPLICATION_FORM].reason = message_text
     logging.info("Reason of %s (id = %s): %s", user.first_name, user.id, message_text)
 
-    update.message.reply_text('Укажите место, где вы находитесь.', reply_markup=ReplyKeyboardRemove())
+    update.message.reply_text('Напишите адрес места, где вы находитесь.', reply_markup=ReplyKeyboardRemove())
     return START_LOCATION
 
 
@@ -83,7 +83,7 @@ def application_start_location(update, context):
     context.user_data[USER_DATA_APPLICATION_FORM].start_location = message_text
     user = update.message.from_user
     logging.info("Start location of %s (id = %s): %s", user.first_name, user.id, message_text)
-    update.message.reply_text('Теперь укажите место, куда Вы направлятесь', )
+    update.message.reply_text('Теперь напишите адрес места, куда Вы направлятесь', )
     return DESTINATION
 
 
