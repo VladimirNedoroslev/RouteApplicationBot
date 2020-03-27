@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 import logging
 from datetime import date
 
@@ -71,7 +69,7 @@ def main():
     dispatcher.add_handler(get_create_organization_application_conversation_handler())
 
     dispatcher.add_error_handler(error)
-    logging.info('Finished added handlers, starting polling...')
+    logging.info('Finished adding handlers, starting polling...')
 
     updater.start_polling()
     logging.info('Bot polling has been started!')

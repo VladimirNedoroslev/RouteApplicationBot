@@ -36,12 +36,12 @@ class ApplicationForm:
                                                                                                     self.destination)
 
 
-REASON = 1
-START_LOCATION = 2
-DESTINATION = 3
-START_TIME = 4
-END_TIME = 5
-CHECK_APPLICATION = 6
+REASON = 'reason'
+START_LOCATION = 'start_location'
+DESTINATION = 'destination'
+START_TIME = 'start_time'
+END_TIME = 'end_time'
+CHECK_APPLICATION = 'check_application'
 
 
 def create_application(update, context):
@@ -63,7 +63,7 @@ def create_application(update, context):
         return REASON
 
 
-def application_reason(update, context):
+def ask_reason(update, context):
     message_text = update.message.text
     if message_text == '/cancel':
         return cancel(update, context)
@@ -75,7 +75,7 @@ def application_reason(update, context):
     return START_LOCATION
 
 
-def application_start_location(update, context):
+def ask_start_location(update, context):
     message_text = update.message.text
     if message_text == '/cancel':
         return cancel(update, context)
@@ -87,7 +87,7 @@ def application_start_location(update, context):
     return DESTINATION
 
 
-def application_destination(update, context):
+def ask_destination(update, context):
     message_text = update.message.text
     if message_text == '/cancel':
         return cancel(update, context)
@@ -101,7 +101,7 @@ def application_destination(update, context):
     return START_TIME
 
 
-def application_start_time(update, context):
+def ask_start_time(update, context):
     user = update.message.from_user
     try:
         message_text = update.message.text
@@ -127,7 +127,7 @@ def application_start_time(update, context):
         return START_TIME
 
 
-def application_end_time(update, context):
+def ask_end_time(update, context):
     user = update.message.from_user
     try:
         message_text = update.message.text
@@ -169,7 +169,7 @@ def application_end_time(update, context):
         return END_TIME
 
 
-def check_application(update, context):
+def ask_check_application(update, context):
     if update.message.text.lower() == 'да':
         update.message.reply_text('Ваш маршрутный лист создан. Генерирую QR-код...',
                                   reply_markup=ReplyKeyboardRemove())
@@ -206,13 +206,13 @@ def get_create_application_conversation_handler():
     return ConversationHandler(
         entry_points=[CommandHandler('create_app', create_application), ],
         states={
-            REASON: [MessageHandler(Filters.text, application_reason)],
-            START_LOCATION: [MessageHandler(Filters.text, application_start_location)],
-            DESTINATION: [MessageHandler(Filters.text, application_destination)],
-            START_TIME: [MessageHandler(Filters.regex(INPUT_TIME_REGEX), application_start_time)],
-            END_TIME: [MessageHandler(Filters.regex(INPUT_TIME_REGEX), application_end_time)],
+            REASON: [MessageHandler(Filters.text, ask_reason)],
+            START_LOCATION: [MessageHandler(Filters.text, ask_start_location)],
+            DESTINATION: [MessageHandler(Filters.text, ask_destination)],
+            START_TIME: [MessageHandler(Filters.regex(INPUT_TIME_REGEX), ask_start_time)],
+            END_TIME: [MessageHandler(Filters.regex(INPUT_TIME_REGEX), ask_end_time)],
             CHECK_APPLICATION: [
-                MessageHandler(Filters.regex(re.compile(r'^(да|нет)$', re.IGNORECASE)), check_application)],
+                MessageHandler(Filters.regex(re.compile(r'^(да|нет)$', re.IGNORECASE)), ask_check_application)],
 
         },
         fallbacks=[CommandHandler('cancel', cancel)]
