@@ -11,7 +11,8 @@ from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Fi
 from application_sender import send_application_and_get_response
 from db_operations import user_exists
 from qr_coder import get_qrcode_from_string
-from settings import USER_DATA_APPLICATION_FORM, REASONS, TELEGRAM_BOT_TOKEN, CHECK_RESPONSE_REGEX
+from settings import USER_DATA_APPLICATION_FORM, REASONS, TELEGRAM_BOT_TOKEN, CHECK_RESPONSE_REGEX, CANCEL_COMMAND, \
+    REGISTRATION_COMMAND, CREATE_APPLICATION_COMMAND, SKIP_COMMAND
 
 
 class ApplicationForm:
@@ -38,6 +39,18 @@ class ApplicationForm:
                                                                                                     self.destination)
 
 
+def is_cancel_command(message_text):
+    if message_text == '/{}'.format(CANCEL_COMMAND):
+        return True
+    return False
+
+
+def is_skip_command(message_text):
+    if message_text == '/{}'.format(SKIP_COMMAND):
+        return True
+    return False
+
+
 REASON = 'reason'
 START_LOCATION = 'start_location'
 DESTINATION = 'destination'
@@ -53,20 +66,20 @@ def create_application(update, context):
         logging.info("User %s (id = %s) has started a new application", user, user_id)
         update.message.reply_text(
             'Вы начали составление маршрутного листа. Выберите причину выхода. Если Вашей причины нет в списке, '
-            'то укажите её самостоятельно. Для отмены используйте команду /cancel',
+            'то укажите её самостоятельно. Для отмены используйте команду /{}'.format(CANCEL_COMMAND),
             reply_markup=ReplyKeyboardMarkup(REASONS))
 
         context.user_data[USER_DATA_APPLICATION_FORM] = ApplicationForm()
         return REASON
     else:
         update.message.reply_text('Вы не можете составлять маршрутные листы пока не закончите регистрацию. Для этого '
-                                  'выполните команду /register.')
+                                  'выполните команду /{}.'.format(REGISTRATION_COMMAND))
         return ConversationHandler.END
 
 
 def ask_reason(update, context):
     message_text = update.message.text
-    if message_text == '/cancel':
+    if is_cancel_command(message_text):
         return cancel(update, context)
     context.user_data[USER_DATA_APPLICATION_FORM].reason = message_text
 
@@ -79,7 +92,7 @@ def ask_reason(update, context):
 
 def ask_start_location(update, context):
     message_text = update.message.text
-    if message_text == '/cancel':
+    if is_cancel_command(message_text):
         return cancel(update, context)
 
     context.user_data[USER_DATA_APPLICATION_FORM].start_location = message_text
@@ -93,7 +106,7 @@ def ask_start_location(update, context):
 
 def ask_destination(update, context):
     message_text = update.message.text
-    if message_text == '/cancel':
+    if is_cancel_command(message_text):
         return cancel(update, context)
 
     context.user_data[USER_DATA_APPLICATION_FORM].destination = message_text
@@ -110,7 +123,7 @@ def ask_destination(update, context):
 def ask_start_time(update, context):
     try:
         message_text = update.message.text
-        if message_text == '/cancel':
+        if is_cancel_command(message_text):
             return cancel(update, context)
         if len(message_text) != 5:
             raise ValueError
@@ -140,7 +153,7 @@ def ask_start_time(update, context):
 def ask_end_time(update, context):
     try:
         message_text = update.message.text
-        if message_text == '/cancel':
+        if is_cancel_command(message_text):
             return cancel(update, context)
         if len(message_text) != 5:
             raise ValueError
@@ -208,20 +221,22 @@ def ask_check_application(update, context):
             update.message.reply_text('Извините, у меня не получается сгенерировать QR-код. Но я исправлюсь!')
 
     update.message.reply_text(
-        'Вы можете снова составить маршрутный лист через команду /create_app', reply_markup=ReplyKeyboardRemove())
+        'Вы можете снова составить маршрутный лист через команду /{}'.format(CREATE_APPLICATION_COMMAND),
+        reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 
 def cancel(update, context):
     update.message.reply_text(
-        'Вы отменили составление маршрутного листа. Вы можете составить маршрутный лист через команду /create_app.',
+        'Вы отменили составление маршрутного листа. Вы можете составить маршрутный лист через команду /{}'.format(
+            CREATE_APPLICATION_COMMAND),
         reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 
 def get_create_application_conversation_handler():
     return ConversationHandler(
-        entry_points=[CommandHandler('create_app', create_application), ],
+        entry_points=[CommandHandler(CREATE_APPLICATION_COMMAND, create_application), ],
         states={
             REASON: [MessageHandler(Filters.text, ask_reason)],
             START_LOCATION: [MessageHandler(Filters.text, ask_start_location)],
@@ -232,5 +247,5 @@ def get_create_application_conversation_handler():
                 MessageHandler(Filters.regex(re.compile(CHECK_RESPONSE_REGEX, re.IGNORECASE)), ask_check_application)],
 
         },
-        fallbacks=[CommandHandler('cancel', cancel)]
+        fallbacks=[CommandHandler(CANCEL_COMMAND, cancel)]
     )

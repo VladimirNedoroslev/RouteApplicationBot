@@ -7,10 +7,11 @@ from telegram import ParseMode, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Filters
 
 from application_sender import send_organization_application_and_get_response
-from create_application_flow import ApplicationForm
+from create_application_flow import ApplicationForm, is_cancel_command, is_skip_command
 from db_operations import user_exists
 from qr_coder import get_qrcode_from_string
-from settings import USER_DATA_APPLICATION_ORGANIZATION_FORM, REASONS, TELEGRAM_BOT_TOKEN, CHECK_RESPONSE_REGEX
+from settings import USER_DATA_APPLICATION_ORGANIZATION_FORM, REASONS, TELEGRAM_BOT_TOKEN, CHECK_RESPONSE_REGEX, \
+    CANCEL_COMMAND, REGISTRATION_COMMAND, SKIP_COMMAND, CREATE_ORGANIZATION_APPLICATION_COMMAND
 
 
 class ApplicationOrganizationForm(ApplicationForm):
@@ -82,7 +83,7 @@ def create_application(update, context):
         logging.info("User %s (id = %s) has started a new organization application", user, user_id)
         update.message.reply_text(
             'Вы начали составление маршрутного листа для организации. Выберите причину выхода. Если Вашей причины нет '
-            'в списке, то укажите её самостоятельно. Для отмены используйте команду /cancel',
+            'в списке, то укажите её самостоятельно. Для отмены используйте команду /{}'.format(CANCEL_COMMAND),
             reply_markup=ReplyKeyboardMarkup(REASONS))
 
         context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM] = ApplicationOrganizationForm()
@@ -90,13 +91,13 @@ def create_application(update, context):
     else:
         update.message.reply_text(
             'Вы не можете составлять маршрутные листы пока не закончите регистрацию.'
-            'Для этого выполните команду /register.')
+            'Для этого выполните команду /{}.'.format(REGISTRATION_COMMAND))
         return ConversationHandler.END
 
 
 def reason(update, context):
     message_text = update.message.text
-    if message_text == '/cancel':
+    if is_cancel_command(message_text):
         return cancel(update, context)
 
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].reason = message_text
@@ -110,7 +111,7 @@ def reason(update, context):
 
 def organization_name(update, context):
     message_text = update.message.text
-    if message_text == '/cancel':
+    if is_cancel_command(message_text):
         return cancel(update, context)
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].organization_name = message_text
 
@@ -123,7 +124,7 @@ def organization_name(update, context):
 
 def organization_tin(update, context):
     message_text = update.message.text
-    if message_text == '/cancel':
+    if is_cancel_command(message_text):
         return cancel(update, context)
     if len(message_text) != 14:
         update.message.reply_text('ИНН должен быть длиной 14 цифр. Попробуйте ещё раз')
@@ -143,7 +144,7 @@ def organization_tin(update, context):
 
 def car_number(update, context):
     message_text = update.message.text
-    if message_text == '/cancel':
+    if is_cancel_command(message_text):
         return cancel(update, context)
 
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].car_number = message_text
@@ -157,7 +158,7 @@ def car_number(update, context):
 
 def car_information(update, context):
     message_text = update.message.text
-    if message_text == '/cancel':
+    if is_cancel_command(message_text):
         return cancel(update, context)
 
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].car_info = message_text
@@ -168,15 +169,15 @@ def car_information(update, context):
     update.message.reply_text(
         'Теперь нужно ввести данные граждан, которые будут с вами следовать на машине (пассажиры).\n'
         'Напишите ФИО пасскажира.\n\n'
-        'Если у Вас не будет пассажиров или вы уже всех указали, то используйте команду /skip.', )
+        'Если у Вас не будет пассажиров или вы уже всех указали, то используйте команду /{}.'.format(SKIP_COMMAND), )
     return PASSENGERS_NAME
 
 
 def passenger_name(update, context):
     message_text = update.message.text
-    if message_text == '/cancel':
+    if is_cancel_command(message_text):
         return cancel(update, context)
-    if message_text == '/skip':
+    if is_skip_command(message_text):
         return skip_passengers(update, context)
 
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].passengers.append(Passenger(message_text))
@@ -191,10 +192,11 @@ def passenger_name(update, context):
 
 def passenger_pin(update, context):
     message_text = update.message.text
-    if message_text == '/cancel':
+    if is_cancel_command(message_text):
         return cancel(update, context)
-    if message_text == '/skip':
+    if is_skip_command(message_text):
         return skip_passengers(update, context)
+
     if len(message_text) != 14:
         update.message.reply_text('Персональный номер должен быть длиной 14 цифр. Попробуйте ещё раз')
         return PASSENGERS_PIN
@@ -210,7 +212,7 @@ def passenger_pin(update, context):
     update.message.reply_text(
         'Отлично! Вы добавили пассажира к маршрутному листу.\n'
         'Напишите ФИО следующего пассажира.\n\n'
-        'Если у Вас больше не будет пассажиров, то используйте команду /skip')
+        'Если у Вас больше не будет пассажиров, то используйте команду /{}'.format(SKIP_COMMAND))
     return PASSENGERS_NAME
 
 
@@ -221,7 +223,7 @@ def skip_passengers(update, context):
 
 def application_start_location(update, context):
     message_text = update.message.text
-    if message_text == '/cancel':
+    if is_cancel_command(message_text):
         return cancel(update, context)
 
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].start_location = message_text
@@ -235,7 +237,7 @@ def application_start_location(update, context):
 
 def destination(update, context):
     message_text = update.message.text
-    if message_text == '/cancel':
+    if is_cancel_command(message_text):
         return cancel(update, context)
 
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].destination = message_text
@@ -252,7 +254,7 @@ def destination(update, context):
 def application_start_time(update, context):
     try:
         message_text = update.message.text
-        if message_text == '/cancel':
+        if is_cancel_command(message_text):
             return cancel(update, context)
         if len(message_text) != 5:
             raise ValueError
@@ -282,7 +284,7 @@ def application_start_time(update, context):
 def application_end_time(update, context):
     try:
         message_text = update.message.text
-        if message_text == '/cancel':
+        if is_cancel_command(message_text):
             return cancel(update, context)
         if len(message_text) != 5:
             raise ValueError
@@ -361,31 +363,35 @@ def check_application(update, context):
             update.message.reply_text('Извините, у меня не получается сгенерировать QR-код. Но я исправлюсь!')
 
     update.message.reply_text(
-        'Вы можете снова составить маршрутный лист для юридического лица через команду /create_org_app',
+        'Вы можете снова составить маршрутный лист для юридического лица через команду /{}'.format(
+            CREATE_ORGANIZATION_APPLICATION_COMMAND),
         reply_markup=ReplyKeyboardRemove())
 
     return ConversationHandler.END
 
 
 def cancel(update, context):
-    update.message.reply_text('Вы отменили составления маршрутного листа для юридического лица. Вы можете составить '
-                              'маршрутный лист для юридического лица через команду /create_org_app')
+    update.message.reply_text(
+        'Вы отменили составления маршрутного листа для юридического лица. Вы можете составить '
+        'маршрутный лист для юридического лица через команду /{}'.format(CREATE_ORGANIZATION_APPLICATION_COMMAND))
     return ConversationHandler.END
 
 
 def get_create_organization_application_conversation_handler():
     return ConversationHandler(
-        entry_points=[CommandHandler('create_org_app', create_application), ],
+        entry_points=[CommandHandler(CREATE_ORGANIZATION_APPLICATION_COMMAND, create_application), ],
         states={
             REASON: [MessageHandler(Filters.text, reason)],
             ORGANIZATION_NAME: [MessageHandler(Filters.text, organization_name)],
             ORGANIZATION_TIN: [MessageHandler(Filters.text, organization_tin)],
             CAR_NUMBER: [MessageHandler(Filters.text, car_number)],
             CAR_INFORMATION: [MessageHandler(Filters.text, car_information)],
+
             PASSENGERS_NAME: [MessageHandler(Filters.text, passenger_name),
-                              CommandHandler('skip', skip_passengers)],
+                              CommandHandler(SKIP_COMMAND, skip_passengers)],
             PASSENGERS_PIN: [MessageHandler(Filters.text, passenger_pin),
-                             CommandHandler('skip', skip_passengers)],
+                             CommandHandler(SKIP_COMMAND, skip_passengers)],
+
             START_LOCATION: [MessageHandler(Filters.text, application_start_location)],
             DESTINATION: [MessageHandler(Filters.text, destination)],
             START_TIME: {MessageHandler(Filters.text, application_start_time)},
@@ -393,5 +399,5 @@ def get_create_organization_application_conversation_handler():
             CHECK_APPLICATION: [
                 MessageHandler(Filters.regex(re.compile(CHECK_RESPONSE_REGEX, re.IGNORECASE)), check_application)],
         },
-        fallbacks={CommandHandler('cancel', cancel)}
+        fallbacks={CommandHandler(CANCEL_COMMAND, cancel)}
     )

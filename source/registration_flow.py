@@ -30,7 +30,8 @@ PHONE_NUMBER = 3
 
 
 def start_registration(update, context):
-    if user_exists(str(update.message.from_user.id)):
+    user = update.message.from_user
+    if user_exists(str(user.id)):
         update.message.reply_text(
             'Вы начали процесс изменения своих данных. Для отмены используйте команду /cancel')
     else:
@@ -39,6 +40,8 @@ def start_registration(update, context):
 
     update.message.reply_text('Пожалуйста введите Ваше ФИО.')
     context.user_data[USER_DATA_REGISTRATION_FORM] = RegistrationForm()
+
+    logging.info("User has started registration process %s (id = %s)", user.first_name, user.id)
 
     return FULL_NAME
 
