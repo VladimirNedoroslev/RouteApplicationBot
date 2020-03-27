@@ -6,6 +6,20 @@ from pip._vendor import requests
 from db_operations import get_user_info
 from settings import API_ADDRESS
 
+PIN_REQUEST_FIELD = 'pin'
+FULLNAME_REQUEST_FIELD = 'fullName'
+PHONE_NUMBER_REQUEST_FIELD = 'phoneNumber'
+ADDRESS_REQUEST_FIELD = 'address'
+DESTINATION_REQUEST_FIELD = 'destinationAddressesList'
+START_TIME_REQUEST_FIELD = 'startTime'
+END_TIME_REQUEST_FIELD = 'endTime'
+TRIP_PURPOSE_REQUEST_FIELD = 'tripPurpose'
+ORGANIZATION_TIN_REQUEST_FIELD = 'organizationTin'
+ORGANIZATION_NAME_REQUEST_FIELD = 'organizationName'
+CAR_STATE_NUMBER_REQUEST_FIELD = 'carStateNumber'
+CAR_INFORMATION_REQUEST_FIELD = 'carInformation'
+PASSENGERS_REQUEST_FIELD = 'passengersList'
+
 
 def send_organization_application_and_get_response(user_id: str, application):
     json_body = json.dumps(get_application_organization_query_body(user_id, application))
@@ -30,24 +44,29 @@ def send_application_and_get_response(user_id: str, application):
 def get_application_query_body(user_id, application):
     user_info = get_user_info(user_id)
     return {
-        'pin': user_info[1],
-        'fullName': user_info[2],
-        'phoneNumber': user_info[3],
-        'address': application.start_location,
-        'destinationAddressesList': [application.destination],
-        'startTime': application.start_time.isoformat(),
-        'endTime': application.end_time.isoformat(),
-        'tripPurpose': application.reason,
+        PIN_REQUEST_FIELD: user_info[1],
+        FULLNAME_REQUEST_FIELD: user_info[2],
+        PHONE_NUMBER_REQUEST_FIELD: user_info[3],
+        ADDRESS_REQUEST_FIELD: application.start_location,
+        DESTINATION_REQUEST_FIELD: [application.destination],
+        START_TIME_REQUEST_FIELD: application.start_time.isoformat(),
+        END_TIME_REQUEST_FIELD: application.end_time.isoformat(),
+        TRIP_PURPOSE_REQUEST_FIELD: application.reason,
     }
 
 
 def get_application_organization_query_body(user_id, application):
     result = get_application_query_body(user_id, application)
-    result['organizationTin'] = application.organization_tin
-    result['organizationName'] = application.organization_name
-    result['carStateNumber'] = application.car_number
-    result['carInformation'] = application.car_info
-    result['passengersList'] = []
+    result[ORGANIZATION_TIN_REQUEST_FIELD] = application.organization_tin
+    result[ORGANIZATION_NAME_REQUEST_FIELD] = application.organization_name
+    result[CAR_STATE_NUMBER_REQUEST_FIELD] = application.car_number
+    result[CAR_INFORMATION_REQUEST_FIELD] = application.car_info
+    result[PASSENGERS_REQUEST_FIELD] = []
     for passenger in application.passengers:
-        result['passengersList'].append(passenger.__dict__)
+        result[PASSENGERS_REQUEST_FIELD].append(passenger_to_query_dict(passenger))
     return result
+
+
+def passenger_to_query_dict(passenger):
+    return {PIN_REQUEST_FIELD: passenger.pin,
+            FULLNAME_REQUEST_FIELD: passenger.full_name}
