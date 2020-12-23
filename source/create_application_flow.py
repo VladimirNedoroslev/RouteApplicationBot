@@ -8,36 +8,18 @@ import telegram
 from telegram import ParseMode, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Filters
 
-from application_sender import send_application_and_get_response
+from bot_messages import APP_START, APP_START_NO_REGISTER, REASON_LENGTH_ERROR, CURRENT_ADDRESS_PROMPT, \
+    ADDRESS_LENGTH_ERROR, \
+    DESTINATION_ADDRESS_PROMPT, START_TIME_PROMPT, START_TIME_LESS_ERROR, END_TIME_PROMPT, TIME_FORMAT_ERROR, \
+    END_TIME_EQUALS_ERROR, \
+    APP_READY, IS_CORRECT, GENERATING_QR_CODE, QR_CODE_CAPTION, APP_AGAIN, APP_CANCEL, YES_NO_REPLY_KEYBOARD, \
+    APP_REASONS
+from classes.application_form import ApplicationForm
 from db_operations import user_exists
 from qr_coder import get_qrcode_from_string
-from settings import USER_DATA_APPLICATION_FORM, REASONS, TELEGRAM_BOT_TOKEN, CHECK_RESPONSE_REGEX, CANCEL_COMMAND, \
-    REGISTRATION_COMMAND, CREATE_APPLICATION_COMMAND
+from settings import USER_DATA_APPLICATION_FORM, TELEGRAM_BOT_TOKEN, CHECK_RESPONSE_REGEX, CANCEL_COMMAND, \
+    CREATE_APPLICATION_COMMAND
 from utilities import is_cancel_command, exceeds_max_length
-
-
-class ApplicationForm:
-    REASON_MAX_LENGTH = 500
-    LOCATION_MAX_LENGTH = 100
-
-    def __init__(self):
-        self.reason = None
-        self.start_location = None
-        self.destination = None
-        self.start_time = None
-        self.end_time = None
-
-    def is_complete(self) -> bool:
-        return all([self.reason, self.start_time, self.end_time, self.start_location,
-                    self.destination])
-
-    def reset(self):
-        self.__init__()
-
-    def __str__(self):
-        return 'reason={}, start_time={}, end_time={}, start_location = {} destination = {}'.format(
-            self.reason, self.start_time, self.end_time, self.start_location, self.destination)
-
 
 REASON = 'reason'
 START_LOCATION = 'start_location'
@@ -52,16 +34,13 @@ def create_application(update, context):
     if user_exists(user_id):
         user = update.message.from_user
         logging.info("User %s (id = %s) has started a new application", user, user_id)
-        update.message.reply_text(
-            'Вы начали составление маршрутного листа. Выберите причину выхода. Если Вашей причины нет в списке, '
-            'то укажите её самостоятельно. Для отмены используйте команду /{}'.format(CANCEL_COMMAND),
-            reply_markup=ReplyKeyboardMarkup(REASONS))
+        update.message.reply_text(context.user_data['lang'][APP_START],
+                                  reply_markup=ReplyKeyboardMarkup(context.user_data['lang'][APP_REASONS]))
 
         context.user_data[USER_DATA_APPLICATION_FORM] = ApplicationForm()
         return REASON
     else:
-        update.message.reply_text('Вы не можете составлять маршрутные листы пока не закончите регистрацию. Для этого '
-                                  'выполните команду /{}.'.format(REGISTRATION_COMMAND))
+        update.message.reply_text(context.user_data['lang'][APP_START_NO_REGISTER])
         return ConversationHandler.END
 
 
@@ -70,16 +49,14 @@ def ask_reason(update, context):
     if is_cancel_command(message_text):
         return cancel(update, context)
     if exceeds_max_length(message_text, ApplicationForm.REASON_MAX_LENGTH):
-        update.message.reply_text(
-            'Описывая причину вы превысили допустимое количество символов (не более {} символов)'.format(
-                ApplicationForm.REASON_MAX_LENGTH))
+        update.message.reply_text(context.user_data['lang'][REASON_LENGTH_ERROR])
         return REASON
     context.user_data[USER_DATA_APPLICATION_FORM].reason = message_text
 
     user = update.message.from_user
     logging.info("Reason of %s (id = %s): %s", user.first_name, user.id, message_text)
 
-    update.message.reply_text('Напишите ваш текущий адрес', reply_markup=ReplyKeyboardRemove())
+    update.message.reply_text(context.user_data['lang'][CURRENT_ADDRESS_PROMPT], reply_markup=ReplyKeyboardRemove())
     return START_LOCATION
 
 
@@ -88,8 +65,7 @@ def ask_start_location(update, context):
     if is_cancel_command(message_text):
         return cancel(update, context)
     if exceeds_max_length(message_text, ApplicationForm.LOCATION_MAX_LENGTH):
-        update.message.reply_text(
-            'Пожалуйста напишите адрес в пределах {} символов'.format(ApplicationForm.LOCATION_MAX_LENGTH))
+        update.message.reply_text(context.user_data['lang'][ADDRESS_LENGTH_ERROR])
         return START_LOCATION
 
     context.user_data[USER_DATA_APPLICATION_FORM].start_location = message_text
@@ -97,7 +73,7 @@ def ask_start_location(update, context):
     user = update.message.from_user
     logging.info("Start location of %s (id = %s): %s", user.first_name, user.id, message_text)
 
-    update.message.reply_text('Теперь напишите адрес, куда Вы направляетесь', )
+    update.message.reply_text(context.user_data['lang'][DESTINATION_ADDRESS_PROMPT])
     return DESTINATION
 
 
@@ -106,8 +82,7 @@ def ask_destination(update, context):
     if is_cancel_command(message_text):
         return cancel(update, context)
     if exceeds_max_length(message_text, ApplicationForm.LOCATION_MAX_LENGTH):
-        update.message.reply_text(
-            'Пожалуйста напишите адрес в пределах {} символов'.format(ApplicationForm.LOCATION_MAX_LENGTH))
+        update.message.reply_text(context.user_data['lang'][ADDRESS_LENGTH_ERROR])
         return DESTINATION
 
     context.user_data[USER_DATA_APPLICATION_FORM].destination = message_text
@@ -115,9 +90,7 @@ def ask_destination(update, context):
     user = update.message.from_user
     logging.info("Destination of %s (id = %s): %s", user.first_name, user.id, message_text)
 
-    update.message.reply_text(
-        'Когда Вы планируете выйти? (Укажите в формате ЧЧ.ММ, например <b>23.45</b> или <b>15.20</b>)',
-        parse_mode=ParseMode.HTML)
+    update.message.reply_text(context.user_data['lang'][START_TIME_PROMPT], parse_mode=ParseMode.HTML)
     return START_TIME
 
 
@@ -133,7 +106,7 @@ def ask_start_time(update, context):
         input_time = datetime.strptime(message_text, "%H.%M")
         start_time = current_time.replace(hour=input_time.hour, minute=input_time.minute, second=0, microsecond=0)
         if start_time.minute != current_time.minute and start_time < current_time:
-            update.message.reply_text('Вы указали время меньше текущего')
+            update.message.reply_text(context.user_data['lang'][START_TIME_LESS_ERROR])
             return START_TIME
 
         context.user_data[USER_DATA_APPLICATION_FORM].start_time = start_time
@@ -141,13 +114,10 @@ def ask_start_time(update, context):
         user = update.message.from_user
         logging.info("Start time of %s (id = %s): %s", user.first_name, user.id, message_text)
 
-        update.message.reply_text(
-            'Когда Вы планируете вернуться? (Укажите в формате ЧЧ.ММ, например <b>23.45</b> или <b>15.20</b>)',
-            parse_mode=ParseMode.HTML)
+        update.message.reply_text(context.user_data['lang'][END_TIME_PROMPT], parse_mode=ParseMode.HTML)
         return END_TIME
     except ValueError:
-        update.message.reply_text('Пожалуйста укажите время в формате ЧЧ.ММ (например <b>23.45</b> или <b>15.20</b>)',
-                                  parse_mode=ParseMode.HTML)
+        update.message.reply_text(context.user_data['lang'][TIME_FORMAT_ERROR], parse_mode=ParseMode.HTML)
         return START_TIME
 
 
@@ -160,14 +130,13 @@ def ask_end_time(update, context):
             raise ValueError
         input_time = datetime.strptime(message_text, "%H.%M")
 
-        end_time = datetime.now().replace(hour=input_time.hour, minute=input_time.minute, second=0,
-                                          microsecond=0)
+        end_time = datetime.now().replace(hour=input_time.hour, minute=input_time.minute, second=0, microsecond=0)
 
         if end_time < context.user_data[USER_DATA_APPLICATION_FORM].start_time:
-            update.message.reply_text('Время прибытия не может быть меньше времени выхода')
+            update.message.reply_text(context.user_data['lang'][START_TIME_LESS_ERROR])
             return END_TIME
         elif end_time == context.user_data[USER_DATA_APPLICATION_FORM].start_time:
-            update.message.reply_text('Время прибытия не может быть равным времени выхода')
+            update.message.reply_text(context.user_data['lang'][END_TIME_EQUALS_ERROR])
             return END_TIME
 
         context.user_data[USER_DATA_APPLICATION_FORM].end_time = end_time
@@ -177,11 +146,9 @@ def ask_end_time(update, context):
 
         application_form = context.user_data[USER_DATA_APPLICATION_FORM]
 
-        reply_keyboard = [['Да', 'Нет']]
+        reply_keyboard = context.user_data['lang'][YES_NO_REPLY_KEYBOARD]
         update.message.reply_text(
-            'Ваш маршрутный лист почти готов. Проверьте Ваши данные.\n'
-            '<b>Причина</b>: {},\n<b>Место нахождения</b>: {},\n<b>Пункт назначения</b>: {},\n<b>Дата выхода</b>: {},'
-            '\n<b>Дата возвращения</b>: {}'.format(
+            context.user_data['lang'][APP_READY].format(
                 application_form.reason,
                 application_form.start_location,
                 application_form.destination,
@@ -190,48 +157,41 @@ def ask_end_time(update, context):
             reply_markup=ReplyKeyboardMarkup(reply_keyboard),
             parse_mode=ParseMode.HTML)
 
-        update.message.reply_text('Всё ли верно? (да/нет)')
+        update.message.reply_text(context.user_data['lang'][IS_CORRECT])
         return CHECK_APPLICATION
     except ValueError:
-        update.message.reply_text('Пожалуйста укажите время в формате ЧЧ.ММ (например <b>23.45</b> или <b>15.20</b>)',
-                                  parse_mode=ParseMode.HTML)
+        update.message.reply_text(context.user_data['lang'][TIME_FORMAT_ERROR], parse_mode=ParseMode.HTML)
         return END_TIME
 
 
 def ask_check_application(update, context):
+    possible_yes_answers = ('da', 'да', 'ooba', 'ооба', 'yes')
     message_text = update.message.text.lower()
-    if message_text == 'да' or message_text == 'da':
+    if message_text in possible_yes_answers:
+        update.message.reply_text(context.user_data['lang'][GENERATING_QR_CODE], reply_markup=ReplyKeyboardRemove())
 
-        update.message.reply_text('Ваш маршрутный лист составлен! Генерирую QR-код...',
-                                  reply_markup=ReplyKeyboardRemove())
+        # response = send_application_and_get_response(str(update.message.from_user.id),
+        #                                              context.user_data[USER_DATA_APPLICATION_FORM])
 
-        response = send_application_and_get_response(str(update.message.from_user.id),
-                                                     context.user_data[USER_DATA_APPLICATION_FORM])
+        # if response.status_code == 200:
+        qr_code = get_qrcode_from_string("998879716137645217594579474123264")
+        bot = telegram.Bot(TELEGRAM_BOT_TOKEN)
+        chat_id = update.effective_chat.id
+        bot.send_photo(chat_id, photo=qr_code, caption=context.user_data['lang'][QR_CODE_CAPTION])
+        user = update.message.from_user
+        logging.info("User %s (id = %s) has finished application_form.", user.first_name, user.id)
+        # else:
+        #     if response.status_code == 503:
+        #         update.message.reply_text('Извините, сейчас я не могу сгенерировать Ваш QR-код, попробуйте позже')
+        #         return ConversationHandler.END
+        #     update.message.reply_text('Извините, у меня не получается сгенерировать QR-код. Но я исправлюсь!')
 
-        if response.status_code == 200:
-            qr_code = get_qrcode_from_string(response.content)
-            bot = telegram.Bot(TELEGRAM_BOT_TOKEN)
-            chat_id = update.effective_chat.id
-            bot.send_photo(chat_id, photo=qr_code, caption='Ваш QR-код для проверки маршуртного листа')
-            user = update.message.from_user
-            logging.info("User %s (id = %s) has finished application_form.", user.first_name, user.id)
-        else:
-            if response.status_code == 503:
-                update.message.reply_text('Извините, сейчас я не могу сгенерировать Ваш QR-код, попробуйте позже')
-                return ConversationHandler.END
-            update.message.reply_text('Извините, у меня не получается сгенерировать QR-код. Но я исправлюсь!')
-
-    update.message.reply_text(
-        'Вы можете снова составить маршрутный лист через команду /{}'.format(CREATE_APPLICATION_COMMAND),
-        reply_markup=ReplyKeyboardRemove())
+    update.message.reply_text(context.user_data['lang'][APP_AGAIN], reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 
 def cancel(update, context):
-    update.message.reply_text(
-        'Вы отменили составление маршрутного листа. Вы можете составить маршрутный лист через команду /{}'.format(
-            CREATE_APPLICATION_COMMAND),
-        reply_markup=ReplyKeyboardRemove())
+    update.message.reply_text(context.user_data['lang'][APP_CANCEL], reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 

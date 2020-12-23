@@ -6,61 +6,22 @@ import telegram
 from telegram import ParseMode, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Filters
 
-from application_sender import send_organization_application_and_get_response
+from bot_messages import APP_REASONS, ORGANIZATION_APP_START, NOT_REGISTERED_ERROR, REASON_LENGTH_ERROR, \
+    ORGANIZATION_NAME_PROMPT, ORGANIZATION_NAME_LENGTH_ERROR, ORGANIZATION_TIN_PROMPT, TIN_LENGTH_ERROR, \
+    TIN_FORMAT_ERROR, CAR_NUMBER_PROMPT, CAR_NUMBER_LENGTH_ERROR, CAR_TYPE_PROMPT, CAR_TYPE_LENGTH_ERROR, \
+    PASSENGERS_PROMPT, PASSENGER_NAME_LENGTH_ERROR, PASSENGER_PIN_PROMPT, PIN_LENGTH_ERROR, PIN_FORMAT_ERROR, \
+    PASSENGER_ADDED, ADDRESS_LENGTH_ERROR, CURRENT_ADDRESS_PROMPT, DESTINATION_ADDRESS_PROMPT, START_TIME_PROMPT, \
+    START_TIME_LESS_ERROR, END_TIME_PROMPT, TIME_FORMAT_ERROR, END_TIME_EQUALS_ERROR, END_TIME_LESS_ERROR, \
+    YES_NO_REPLY_KEYBOARD, ORGANIZATION_APP_READY, IS_CORRECT, NO_PASSENGERS, GENERATING_QR_CODE, QR_CODE_CAPTION, \
+    ORGANIZATION_APP_AGAIN, ORGANIZATION_APP_CANCEL
+from classes.application_organization_form import ApplicationOrganizationForm
+from classes.passenger import Passenger
 from create_application_flow import ApplicationForm
 from db_operations import user_exists
 from qr_coder import get_qrcode_from_string
-from settings import USER_DATA_APPLICATION_ORGANIZATION_FORM, REASONS, TELEGRAM_BOT_TOKEN, CHECK_RESPONSE_REGEX, \
-    CANCEL_COMMAND, REGISTRATION_COMMAND, SKIP_COMMAND, CREATE_ORGANIZATION_APPLICATION_COMMAND
+from settings import USER_DATA_APPLICATION_ORGANIZATION_FORM, TELEGRAM_BOT_TOKEN, CHECK_RESPONSE_REGEX, \
+    CANCEL_COMMAND, SKIP_COMMAND, CREATE_ORGANIZATION_APPLICATION_COMMAND
 from utilities import is_cancel_command, exceeds_max_length, is_skip_command
-
-
-class ApplicationOrganizationForm(ApplicationForm):
-    ORGANIZATION_NAME_MAX_LENGTH = 200
-    CAR_NUMBER_MAX_LENGTH = 10
-    CAR_INFO_MAX_LENGTH = 50
-
-    def __init__(self):
-        super().__init__()
-        self.organization_name = None
-        self.organization_tin = None
-        self.car_number = None,
-        self.car_info = None
-        self.passengers = []
-
-    def is_complete(self) -> bool:
-        return all([super().is_complete(), self.organization_name, self.organization_tin, self.car_number,
-                    self.car_info, self.passengers])
-
-    def reset(self):
-        self.__init__()
-
-    def __str__(self):
-        return 'reason = {}, organization = {} {}, car = {} {}, passengers = {} start_location = {}, destination = {}, start_time = {}, end_time = {}'.format(
-            self.reason,
-            self.organization_name,
-            self.organization_tin, self.car_number, self.car_info, self.passengers, self.start_location,
-            self.destination,
-            self.start_time,
-            self.end_time)
-
-
-class Passenger:
-    FULL_NAME_MAX_LENGTH = 100
-
-    def __init__(self, full_name):
-        self.full_name = full_name
-        self.pin = None
-
-    def __str__(self):
-        return '{} {}'.format(self.full_name, self.pin)
-
-    def __repr__(self):
-        return '{} {}'.format(self.full_name, self.pin)
-
-    def is_complete(self):
-        return all([self.full_name, self.pin])
-
 
 REASON = 1
 
@@ -88,16 +49,13 @@ def create_application(update, context):
         user = update.message.from_user
         logging.info("User %s (id = %s) has started a new organization application", user, user_id)
         update.message.reply_text(
-            'Вы начали составление маршрутного листа для организации. Выберите причину выхода. Если Вашей причины нет '
-            'в списке, то укажите её самостоятельно. Для отмены используйте команду /{}'.format(CANCEL_COMMAND),
-            reply_markup=ReplyKeyboardMarkup(REASONS))
+            context.user_data['lang'][ORGANIZATION_APP_START],
+            reply_markup=ReplyKeyboardMarkup(context.user_data['lang'][APP_REASONS]))
 
         context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM] = ApplicationOrganizationForm()
         return REASON
     else:
-        update.message.reply_text(
-            'Вы не можете составлять маршрутные листы пока не закончите регистрацию.'
-            'Для этого выполните команду /{}.'.format(REGISTRATION_COMMAND))
+        update.message.reply_text(context.user_data['lang'][NOT_REGISTERED_ERROR])
         return ConversationHandler.END
 
 
@@ -106,9 +64,7 @@ def reason(update, context):
     if is_cancel_command(message_text):
         return cancel(update, context)
     if exceeds_max_length(message_text, ApplicationOrganizationForm.REASON_MAX_LENGTH):
-        update.message.reply_text(
-            'Описывая причину вы превысили допустимое количество символов (не более {} символов)'.format(
-                ApplicationForm.REASON_MAX_LENGTH))
+        update.message.reply_text(context.user_data['lang'][REASON_LENGTH_ERROR])
         return REASON
 
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].reason = message_text
@@ -116,7 +72,7 @@ def reason(update, context):
     user = update.message.from_user
     logging.info("Reason of %s (id = %s): %s", user.first_name, user.id, message_text)
 
-    update.message.reply_text('Напишите наименование Вашей организации', reply_markup=ReplyKeyboardRemove())
+    update.message.reply_text(context.user_data['lang'][ORGANIZATION_NAME_PROMPT], reply_markup=ReplyKeyboardRemove())
     return ORGANIZATION_NAME
 
 
@@ -125,16 +81,14 @@ def organization_name(update, context):
     if is_cancel_command(message_text):
         return cancel(update, context)
     if exceeds_max_length(message_text, ApplicationOrganizationForm.ORGANIZATION_NAME_MAX_LENGTH):
-        update.message.reply_text(
-            'Если название Вашей организации превышает {} символов, то напишите его в краткой форме.'.format(
-                ApplicationOrganizationForm.ORGANIZATION_NAME_MAX_LENGTH))
+        update.message.reply_text(context.user_data['lang'][ORGANIZATION_NAME_LENGTH_ERROR])
         return ORGANIZATION_NAME
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].organization_name = message_text
 
     user = update.message.from_user
     logging.info("Organization name of %s (id = %s): %s", user.first_name, user.id, message_text)
 
-    update.message.reply_text('Теперь напишите ИНН Вашей организации (14 цифр)', )
+    update.message.reply_text(context.user_data['lang'][ORGANIZATION_TIN_PROMPT])
     return ORGANIZATION_TIN
 
 
@@ -143,10 +97,10 @@ def organization_tin(update, context):
     if is_cancel_command(message_text):
         return cancel(update, context)
     if len(message_text) != 14:
-        update.message.reply_text('ИНН должен быть длиной 14 цифр. Попробуйте ещё раз')
+        update.message.reply_text(context.user_data['lang'][TIN_LENGTH_ERROR])
         return ORGANIZATION_TIN
     if not message_text.isnumeric():
-        update.message.reply_text('ИНН содержит недопустимые символы. Попробуйте ещё раз ')
+        update.message.reply_text(context.user_data['lang'][TIN_FORMAT_ERROR])
         return ORGANIZATION_TIN
 
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].organization_tin = message_text
@@ -154,7 +108,7 @@ def organization_tin(update, context):
     user = update.message.from_user
     logging.info("Organization tin of %s (id = %s): %s", user.first_name, user.id, message_text)
 
-    update.message.reply_text('Хорошо, теперь введите номер Вашей машины', )
+    update.message.reply_text(context.user_data['lang'][CAR_NUMBER_PROMPT])
     return CAR_NUMBER
 
 
@@ -163,8 +117,7 @@ def car_number(update, context):
     if is_cancel_command(message_text):
         return cancel(update, context)
     if exceeds_max_length(message_text, ApplicationOrganizationForm.CAR_NUMBER_MAX_LENGTH):
-        update.message.reply_text(
-            'Номер машины должен быть в пределах {} символов'.format(ApplicationOrganizationForm.CAR_NUMBER_MAX_LENGTH))
+        update.message.reply_text(context.user_data['lang'][CAR_NUMBER_LENGTH_ERROR])
         return CAR_NUMBER
 
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].car_number = message_text
@@ -172,7 +125,7 @@ def car_number(update, context):
     user = update.message.from_user
     logging.info("Car number of %s (id = %s): %s", user.first_name, user.id, message_text)
 
-    update.message.reply_text('Супер! Какая у Вашей машины марка и модель?', )
+    update.message.reply_text(context.user_data['lang'][CAR_TYPE_PROMPT])
     return CAR_INFORMATION
 
 
@@ -181,9 +134,7 @@ def car_information(update, context):
     if is_cancel_command(message_text):
         return cancel(update, context)
     if exceeds_max_length(message_text, ApplicationOrganizationForm.CAR_INFO_MAX_LENGTH):
-        update.message.reply_text(
-            'Если марка и модель Вашей машины превышает {} символов, то напишите их в краткой форме'.format(
-                ApplicationOrganizationForm.CAR_INFO_MAX_LENGTH))
+        update.message.reply_text(context.user_data['lang'][CAR_TYPE_LENGTH_ERROR])
         return CAR_INFORMATION
 
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].car_info = message_text
@@ -191,10 +142,7 @@ def car_information(update, context):
     user = update.message.from_user
     logging.info("Car information of %s (id = %s): %s", user.first_name, user.id, message_text)
 
-    update.message.reply_text(
-        'Теперь нужно ввести данные граждан, которые будут с вами следовать на машине (пассажиры).\n'
-        'Напишите ФИО пасскажира.\n\n'
-        'Если у Вас не будет пассажиров или вы уже всех указали, то используйте команду /{}.'.format(SKIP_COMMAND), )
+    update.message.reply_text(context.user_data['lang'][PASSENGERS_PROMPT], )
     return PASSENGERS_NAME
 
 
@@ -205,8 +153,7 @@ def passenger_name(update, context):
     if is_skip_command(message_text):
         return skip_passengers(update, context)
     if exceeds_max_length(message_text, Passenger.FULL_NAME_MAX_LENGTH):
-        update.message.reply_text('Если ФИО пассажира превышает {} символов, то напишите его сокращенно'.format(
-            Passenger.FULL_NAME_MAX_LENGTH))
+        update.message.reply_text(context.user_data['lang'][PASSENGER_NAME_LENGTH_ERROR])
         return PASSENGERS_NAME
 
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].passengers.append(Passenger(message_text))
@@ -214,8 +161,7 @@ def passenger_name(update, context):
     user = update.message.from_user
     logging.info("Passenger name of %s (id = %s): %s", user.first_name, user.id, message_text)
 
-    update.message.reply_text(
-        'Напишите ПИН пассажира (персональный идентификационный номер) он указан в паспорте (14 цифр)')
+    update.message.reply_text(context.user_data['lang'][PASSENGER_PIN_PROMPT])
     return PASSENGERS_PIN
 
 
@@ -227,10 +173,10 @@ def passenger_pin(update, context):
         return skip_passengers(update, context)
 
     if len(message_text) != 14:
-        update.message.reply_text('Персональный номер должен быть длиной 14 цифр. Попробуйте ещё раз')
+        update.message.reply_text(context.user_data['lang'][PIN_LENGTH_ERROR])
         return PASSENGERS_PIN
     if not message_text.isnumeric():
-        update.message.reply_text('Ваш персональный номер содержит недопустимые символы. Попробуйте ещё раз ')
+        update.message.reply_text(context.user_data['lang'][PIN_FORMAT_ERROR])
         return PASSENGERS_PIN
 
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].passengers[-1].pin = message_text
@@ -238,15 +184,12 @@ def passenger_pin(update, context):
     user = update.message.from_user
     logging.info("Passenger pin of %s (id = %s): %s", user.first_name, user.id, message_text)
 
-    update.message.reply_text(
-        'Отлично! Вы добавили пассажира к маршрутному листу.\n'
-        'Напишите ФИО следующего пассажира.\n\n'
-        'Если у Вас больше не будет пассажиров, то используйте команду /{}'.format(SKIP_COMMAND))
+    update.message.reply_text(context.user_data['lang'][PASSENGER_ADDED])
     return PASSENGERS_NAME
 
 
 def skip_passengers(update, context):
-    update.message.reply_text('Напишите ваш текущий адрес')
+    update.message.reply_text(context.user_data['lang'][CURRENT_ADDRESS_PROMPT])
     return START_LOCATION
 
 
@@ -255,15 +198,14 @@ def application_start_location(update, context):
     if is_cancel_command(message_text):
         return cancel(update, context)
     if exceeds_max_length(message_text, ApplicationForm.LOCATION_MAX_LENGTH):
-        update.message.reply_text(
-            'Пожалуйста напишите адрес в пределах {} символов'.format(ApplicationForm.LOCATION_MAX_LENGTH))
+        update.message.reply_text(context.user_data['lang'][ADDRESS_LENGTH_ERROR])
         return START_LOCATION
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].start_location = message_text
 
     user = update.message.from_user
     logging.info("Start location of %s (id = %s): %s", user.first_name, user.id, message_text)
 
-    update.message.reply_text('Теперь напишите адрес, куда Вы направляетесь', )
+    update.message.reply_text(context.user_data['lang'][DESTINATION_ADDRESS_PROMPT])
     return DESTINATION
 
 
@@ -273,16 +215,14 @@ def destination(update, context):
         return cancel(update, context)
     if exceeds_max_length(message_text, ApplicationForm.LOCATION_MAX_LENGTH):
         update.message.reply_text(
-            'Пожалуйста напишите адрес в пределах {} символов'.format(ApplicationForm.LOCATION_MAX_LENGTH))
+            context.user_data['lang'][ADDRESS_LENGTH_ERROR])
         return DESTINATION
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].destination = message_text
 
     user = update.message.from_user
     logging.info("Destination of %s (id = %s): %s", user.first_name, user.id, message_text)
 
-    update.message.reply_text(
-        'Когда Вы планируете выйти? (Укажите в формате ЧЧ.ММ, например <b>23.45</b> или <b>15.20</b>)',
-        parse_mode=ParseMode.HTML)
+    update.message.reply_text(context.user_data['lang'][START_TIME_PROMPT], parse_mode=ParseMode.HTML)
     return START_TIME
 
 
@@ -298,7 +238,7 @@ def application_start_time(update, context):
         start_time = current_time.replace(hour=input_time.hour, minute=input_time.minute, second=0, microsecond=0)
 
         if current_time.minute != start_time.minute and start_time < current_time:
-            update.message.reply_text('Вы указали время меньше текущего')
+            update.message.reply_text(context.user_data['lang'][START_TIME_LESS_ERROR])
             return START_TIME
 
         context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].start_time = start_time
@@ -306,13 +246,10 @@ def application_start_time(update, context):
         user = update.message.from_user
         logging.info("Start time of %s (id = %s): %s", user.first_name, user.id, message_text)
 
-        update.message.reply_text(
-            'Когда Вы планируете вернуться? (Укажите в формате ЧЧ.ММ, например <b>23.45</b> или <b>15.20</b>)',
-            parse_mode=ParseMode.HTML)
+        update.message.reply_text(context.user_data['lang'][END_TIME_PROMPT], parse_mode=ParseMode.HTML)
         return END_TIME
     except ValueError:
-        update.message.reply_text('Пожалуйста укажите время в формате ЧЧ.ММ (например <b>23.45</b> или <b>15.20</b>)',
-                                  parse_mode=ParseMode.HTML)
+        update.message.reply_text(context.user_data['lang'][TIME_FORMAT_ERROR], parse_mode=ParseMode.HTML)
         return START_TIME
 
 
@@ -327,10 +264,10 @@ def application_end_time(update, context):
         input_time = datetime.strptime(message_text, "%H.%M")
         end_time = datetime.now().replace(hour=input_time.hour, minute=input_time.minute, second=0, microsecond=0)
         if end_time < context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].start_time:
-            update.message.reply_text('Время прибытия не может быть меньше времени выхода')
+            update.message.reply_text(context.user_data['lang'][END_TIME_LESS_ERROR])
             return END_TIME
         elif end_time == context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].start_time:
-            update.message.reply_text('Время прибытия не может быть равным времени выхода')
+            update.message.reply_text(context.user_data['lang'][END_TIME_EQUALS_ERROR])
             return END_TIME
 
         context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].end_time = end_time
@@ -339,35 +276,31 @@ def application_end_time(update, context):
         logging.info("End time of %s (id = %s): %s", user.first_name, user.id, message_text)
 
         application_form = context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM]
-        reply_keyboard = [['Да', 'Нет']]
-        update.message.reply_text(
-            "Ваш маршрутный лист почти готов. Проверьте Ваши данные.\n<b>Причина</b>: {},\n<b>Название "
-            "организации</b>: {}\n<b>ИНН организации</b>: {}\n<b>Номер машины</b>: {}\n<b>Марка и модель машины</b>: "
-            "{}\n<b>Пассажиры</b>: {}\n<b>Место нахождения</b>: {}\n<b>Пункт назначения</b>: {}\n<b>Время выхода</b>: "
-            "{},\n<b>Время возвращения</b>: {}".format(application_form.reason,
-                                                       application_form.organization_name,
-                                                       application_form.organization_tin,
-                                                       application_form.car_number,
-                                                       application_form.car_info,
-                                                       passengers_to_str(application_form.passengers),
-                                                       application_form.start_location,
-                                                       application_form.destination,
-                                                       application_form.start_time,
-                                                       application_form.end_time),
-            reply_markup=ReplyKeyboardMarkup(reply_keyboard),
-            parse_mode=ParseMode.HTML)
+        reply_keyboard = context.user_data['lang'][YES_NO_REPLY_KEYBOARD]
+        update.message.reply_text(context.user_data['lang'][ORGANIZATION_APP_READY].format(application_form.reason,
+                                                                                           application_form.organization_name,
+                                                                                           application_form.organization_tin,
+                                                                                           application_form.car_number,
+                                                                                           application_form.car_info,
+                                                                                           passengers_to_str(context,
+                                                                                                             application_form.passengers),
+                                                                                           application_form.start_location,
+                                                                                           application_form.destination,
+                                                                                           application_form.start_time,
+                                                                                           application_form.end_time),
+                                  reply_markup=ReplyKeyboardMarkup(reply_keyboard),
+                                  parse_mode=ParseMode.HTML)
 
-        update.message.reply_text('Всё ли верно? (да/нет)')
+        update.message.reply_text(context.user_data['lang'][IS_CORRECT])
         return CHECK_APPLICATION
     except ValueError:
-        update.message.reply_text('Пожалуйста укажите время в формате ЧЧ.ММ (например <b>23.45</b> или <b>15.20</b>)',
-                                  parse_mode=ParseMode.HTML)
+        update.message.reply_text(context.user_data['lang'][TIME_FORMAT_ERROR], parse_mode=ParseMode.HTML)
         return END_TIME
 
 
-def passengers_to_str(passengers):
+def passengers_to_str(context, passengers):
     if not passengers or (len(passengers) == 1 and not passengers[0].is_complete()):
-        return '<i>нет пассажиров</i>'
+        return context.user_data['lang'][NO_PASSENGERS]
     str_list = []
     for passenger in passengers:
         if passenger.is_complete():
@@ -376,39 +309,33 @@ def passengers_to_str(passengers):
 
 
 def check_application(update, context):
+    possible_yes_answers = ('da', 'да', 'ooba', 'ооба', 'yes')
     message_text = update.message.text.lower()
-    if message_text == 'да' or message_text == 'da':
-        update.message.reply_text('Ваш маршрутный лист составлен. Генерирую QR-код...',
-                                  reply_markup=ReplyKeyboardRemove())
+    if message_text in possible_yes_answers:
+        update.message.reply_text(context.user_data['lang'][GENERATING_QR_CODE], reply_markup=ReplyKeyboardRemove())
 
-        response = send_organization_application_and_get_response(str(update.message.from_user.id),
-                                                                  context.user_data[
-                                                                      USER_DATA_APPLICATION_ORGANIZATION_FORM])
-        if response.status_code == 200:
-            qr_code = get_qrcode_from_string(response.content)
-            bot = telegram.Bot(TELEGRAM_BOT_TOKEN)
-            chat_id = update.effective_chat.id
-            bot.send_photo(chat_id, photo=qr_code, caption='Ваш QR-код для проверки маршуртного листа')
-            user = update.message.from_user
-            logging.info("User %s (id = %s) has finished organization application_form.", user.first_name, user.id)
-        else:
-            if response.status_code == 503:
-                update.message.reply_text('Извините, сейчас я не могу сгенерировать Ваш QR-код, попробуйте позже')
-                return ConversationHandler.END
-            update.message.reply_text('Извините, у меня не получается сгенерировать QR-код. Но я исправлюсь!')
+        # response = send_organization_application_and_get_response(str(update.message.from_user.id),
+        #                                                           context.user_data[
+        #                                                               USER_DATA_APPLICATION_ORGANIZATION_FORM])
+        # if response.status_code == 200:
+        qr_code = get_qrcode_from_string("2165798715749124791731745174147")
+        bot = telegram.Bot(TELEGRAM_BOT_TOKEN)
+        chat_id = update.effective_chat.id
+        bot.send_photo(chat_id, photo=qr_code, caption=context.user_data['lang'][QR_CODE_CAPTION])
+        user = update.message.from_user
+        logging.info("User %s (id = %s) has finished organization application_form.", user.first_name, user.id)
+        # else:
+        #     if response.status_code == 503:
+        #         update.message.reply_text('Извините, сейчас я не могу сгенерировать Ваш QR-код, попробуйте позже')
+        #         return ConversationHandler.END
+        #     update.message.reply_text('Извините, у меня не получается сгенерировать QR-код. Но я исправлюсь!')
 
-    update.message.reply_text(
-        'Вы можете снова составить маршрутный лист для юридического лица через команду /{}'.format(
-            CREATE_ORGANIZATION_APPLICATION_COMMAND),
-        reply_markup=ReplyKeyboardRemove())
-
+    update.message.reply_text(context.user_data['lang'][ORGANIZATION_APP_AGAIN], reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 
 def cancel(update, context):
-    update.message.reply_text(
-        'Вы отменили составления маршрутного листа для юридического лица. Вы можете составить '
-        'маршрутный лист для юридического лица через команду /{}'.format(CREATE_ORGANIZATION_APPLICATION_COMMAND))
+    update.message.reply_text(context.user_data['lang'][ORGANIZATION_APP_CANCEL], reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 

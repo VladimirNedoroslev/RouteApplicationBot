@@ -3,30 +3,13 @@ import logging
 from telegram import ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Filters
 
+from bot_messages import CHANGE_INFO_START, REGISTER_START, NAME_PROMPT, NAME_LENGTH_ERROR, REGISTER_PIN, \
+    PIN_LENGTH_ERROR, PIN_FORMAT_ERROR, SEND_PHONE, PHONE_PROMPT, REGISTER_FINISH, REGISTER_ERROR, \
+    CHANGE_INFO_INTERRUPTED, REGISTER_INTERRUPTED
+from classes.registration_form import RegistrationForm
 from db_operations import save_user, user_exists, update_user
 from settings import USER_DATA_REGISTRATION_FORM
 from utilities import is_cancel_command, exceeds_max_length
-
-
-class RegistrationForm:
-    PIN_LENGTH = 14
-    FULL_NAME_MAX_LENGTH = 50
-
-    def __init__(self):
-        self.pin = None
-        self.full_name = None
-        self.phone_number = None
-
-    def is_complete(self) -> bool:
-        return all([self.pin, self.full_name, self.phone_number])
-
-    def reset(self):
-        self.__init__()
-
-    def __str__(self):
-        return 'pin = {}, name = {}, phone number = {}'.format(self.pin, self.full_name,
-                                                               self.phone_number)
-
 
 PIN = 1
 FULL_NAME = 2
@@ -37,12 +20,11 @@ def start_registration(update, context):
     user = update.message.from_user
     if user_exists(str(user.id)):
         update.message.reply_text(
-            'Вы начали процесс изменения своих данных. Для отмены используйте команду /cancel')
+            context.user_data['lang'][CHANGE_INFO_START])
     else:
-        update.message.reply_text(
-            'Вы начали процесс регистрации. Для отмены используйте команду /cancel.')
+        update.message.reply_text(context.user_data['lang'][REGISTER_START])
 
-    update.message.reply_text('Пожалуйста введите Ваше ФИО.')
+    update.message.reply_text(context.user_data['lang'][NAME_PROMPT])
     context.user_data[USER_DATA_REGISTRATION_FORM] = RegistrationForm()
 
     logging.info("User has started registration process %s (id = %s)", user.first_name, user.id)
@@ -55,17 +37,14 @@ def full_name(update, context):
     if is_cancel_command(message_text):
         return cancel(update, context)
     if exceeds_max_length(message_text, RegistrationForm.FULL_NAME_MAX_LENGTH):
-        update.message.reply_text(
-            'Если Ваше ФИО длиннее {} символов, то напишите его сокращённо'.format(RegistrationForm.FULL_NAME_MAX_LENGTH))
+        update.message.reply_text(context.user_data['lang'][NAME_LENGTH_ERROR])
         return FULL_NAME
     context.user_data[USER_DATA_REGISTRATION_FORM].full_name = message_text
 
     user = update.message.from_user
     logging.info("Full name of %s (id = %s): %s", user.first_name, user.id, message_text)
 
-    update.message.reply_text(
-        'Хорошо, {}, Теперь введите ваш ПИН (персональный идентификационный номер) он указан в паспорте (14 цифр)'.format(
-            message_text))
+    update.message.reply_text(context.user_data['lang'][REGISTER_PIN].format(message_text))
 
     return PIN
 
@@ -75,10 +54,10 @@ def pin(update, context):
     if message_text == '/cancel':
         return cancel(update, context)
     if len(message_text) != 14:
-        update.message.reply_text('Персональный номер должен быть длиной 14 цифр. Попробуйте ещё раз')
+        update.message.reply_text(context.user_data['lang'][PIN_LENGTH_ERROR])
         return PIN
     if not message_text.isnumeric():
-        update.message.reply_text('Ваш персональный номер содержит недопустимые символы. Попробуйте ещё раз ')
+        update.message.reply_text(context.user_data['lang'][PIN_FORMAT_ERROR])
         return PIN
 
     context.user_data[USER_DATA_REGISTRATION_FORM].pin = message_text
@@ -86,11 +65,9 @@ def pin(update, context):
     user = update.message.from_user
     logging.info("Pin of %s (id = %s): %s", user.first_name, user.id, message_text)
 
-    send_contact_button = KeyboardButton(text="Отправить свой номер телефона", request_contact=True)
-    update.message.reply_text(
-        'Мне осталось узнать Ваш номер телефона - для этого нажмите на кнопку "Отправить свой номер телефона".\nЕсли '
-        'Вы не видите кнопку, то нажмите на иконку слева от скрепки в поле ввода сообщений.',
-        reply_markup=ReplyKeyboardMarkup([[send_contact_button]]))
+    send_contact_button = KeyboardButton(text=context.user_data['lang'][SEND_PHONE], request_contact=True)
+    update.message.reply_text(context.user_data['lang'][PHONE_PROMPT],
+                              reply_markup=ReplyKeyboardMarkup([[send_contact_button]]))
 
     return PHONE_NUMBER
 
@@ -100,9 +77,7 @@ def phone_number(update, context):
 
     context.user_data[USER_DATA_REGISTRATION_FORM].phone_number = user_phone_number
 
-    update.message.reply_text(
-        'Отлично, всё готово! Теперь Вы можете создавать маршрутные листы через команды:\n/create_app - для '
-        'физических лиц\n/create_org_app - для юридических лиц', reply_markup=ReplyKeyboardRemove())
+    update.message.reply_text(context.user_data['lang'][REGISTER_FINISH], reply_markup=ReplyKeyboardRemove())
 
     user = update.message.from_user
     logging.info("Phone number of %s (id = %s): %s", user.first_name, user.id, user_phone_number)
@@ -116,20 +91,16 @@ def phone_number(update, context):
             save_user(user_id, chat_id, context.user_data[USER_DATA_REGISTRATION_FORM])
 
     else:
-        update.message.reply_text('При Вашей регистрации произошла ошибка. Попробуйте позже.')
+        update.message.reply_text(context.user_data['lang'][REGISTER_ERROR])
     return ConversationHandler.END
 
 
 def cancel(update, context):
     if user_exists(str(update.message.from_user.id)):
-        update.message.reply_text(
-            'Вы прервали процесс изменения своих данных. Запустить его снова можно через команду /change_info',
-            reply_markup=ReplyKeyboardRemove())
+        update.message.reply_text(context.user_data['lang'][CHANGE_INFO_INTERRUPTED],
+                                  reply_markup=ReplyKeyboardRemove())
     else:
-        update.message.reply_text(
-            'Вы прервали регистрацию. Пока Вы не заполните все данные, Вы не сможете заполнять заявки. Начать '
-            'регистрацию можно через команду /register',
-            reply_markup=ReplyKeyboardRemove())
+        update.message.reply_text(context.user_data['lang'][REGISTER_INTERRUPTED], reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 
