@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from datetime import date
+from logging.handlers import TimedRotatingFileHandler
 
 from telegram import ReplyKeyboardRemove
 from telegram.ext import (Updater, CommandHandler)
@@ -89,8 +89,17 @@ def main():
     updater.idle()
 
 
+def configure_logging():
+    logging.basicConfig(level=logging.INFO, format=LOG_FORMAT, datefmt=LOG_TIME_FORMAT)
+    log_file_name = f'route_bot.log'
+
+    logger = logging.getLogger()
+    file_handler = TimedRotatingFileHandler(log_file_name, when="midnight", )
+    file_handler.formatter = logging.Formatter(fmt=LOG_FORMAT, datefmt=LOG_TIME_FORMAT)
+    logger.addHandler(file_handler)
+
+
 if __name__ == '__main__':
-    logging.basicConfig(filename='{}_{}.log'.format(__file__, date.today()), level=logging.INFO, format=LOG_FORMAT,
-                        datefmt=LOG_TIME_FORMAT)
+    configure_logging()
     check_database()
     main()
