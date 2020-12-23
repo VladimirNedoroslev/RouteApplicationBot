@@ -12,10 +12,13 @@ from application_sender import send_application_and_get_response
 from db_operations import user_exists
 from qr_coder import get_qrcode_from_string
 from settings import USER_DATA_APPLICATION_FORM, REASONS, TELEGRAM_BOT_TOKEN, CHECK_RESPONSE_REGEX, CANCEL_COMMAND, \
-    REGISTRATION_COMMAND, CREATE_APPLICATION_COMMAND, SKIP_COMMAND
+    REGISTRATION_COMMAND, CREATE_APPLICATION_COMMAND
+from utilities import is_cancel_command, exceeds_max_length
 
 
 class ApplicationForm:
+    REASON_MAX_LENGTH = 500
+    LOCATION_MAX_LENGTH = 100
 
     def __init__(self):
         self.reason = None
@@ -32,23 +35,8 @@ class ApplicationForm:
         self.__init__()
 
     def __str__(self):
-        return 'reason={}, start_time={}, end_time={}, start_location = {} destination = {}'.format(self.reason,
-                                                                                                    self.start_time,
-                                                                                                    self.end_time,
-                                                                                                    self.start_location,
-                                                                                                    self.destination)
-
-
-def is_cancel_command(message_text):
-    if message_text == '/{}'.format(CANCEL_COMMAND):
-        return True
-    return False
-
-
-def is_skip_command(message_text):
-    if message_text == '/{}'.format(SKIP_COMMAND):
-        return True
-    return False
+        return 'reason={}, start_time={}, end_time={}, start_location = {} destination = {}'.format(
+            self.reason, self.start_time, self.end_time, self.start_location, self.destination)
 
 
 REASON = 'reason'
@@ -81,6 +69,11 @@ def ask_reason(update, context):
     message_text = update.message.text
     if is_cancel_command(message_text):
         return cancel(update, context)
+    if exceeds_max_length(message_text, ApplicationForm.REASON_MAX_LENGTH):
+        update.message.reply_text(
+            'Описывая причину вы превысили допустимое количество символов (не более {} символов)'.format(
+                ApplicationForm.REASON_MAX_LENGTH))
+        return REASON
     context.user_data[USER_DATA_APPLICATION_FORM].reason = message_text
 
     user = update.message.from_user
@@ -94,6 +87,10 @@ def ask_start_location(update, context):
     message_text = update.message.text
     if is_cancel_command(message_text):
         return cancel(update, context)
+    if exceeds_max_length(message_text, ApplicationForm.LOCATION_MAX_LENGTH):
+        update.message.reply_text(
+            'Пожалуйста напишите адрес в пределах {} символов'.format(ApplicationForm.LOCATION_MAX_LENGTH))
+        return START_LOCATION
 
     context.user_data[USER_DATA_APPLICATION_FORM].start_location = message_text
 
@@ -108,6 +105,10 @@ def ask_destination(update, context):
     message_text = update.message.text
     if is_cancel_command(message_text):
         return cancel(update, context)
+    if exceeds_max_length(message_text, ApplicationForm.LOCATION_MAX_LENGTH):
+        update.message.reply_text(
+            'Пожалуйста напишите адрес в пределах {} символов'.format(ApplicationForm.LOCATION_MAX_LENGTH))
+        return DESTINATION
 
     context.user_data[USER_DATA_APPLICATION_FORM].destination = message_text
 

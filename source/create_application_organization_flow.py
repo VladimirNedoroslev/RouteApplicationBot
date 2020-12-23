@@ -7,14 +7,19 @@ from telegram import ParseMode, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Filters
 
 from application_sender import send_organization_application_and_get_response
-from create_application_flow import ApplicationForm, is_cancel_command, is_skip_command
+from create_application_flow import ApplicationForm
 from db_operations import user_exists
 from qr_coder import get_qrcode_from_string
 from settings import USER_DATA_APPLICATION_ORGANIZATION_FORM, REASONS, TELEGRAM_BOT_TOKEN, CHECK_RESPONSE_REGEX, \
     CANCEL_COMMAND, REGISTRATION_COMMAND, SKIP_COMMAND, CREATE_ORGANIZATION_APPLICATION_COMMAND
+from utilities import is_cancel_command, exceeds_max_length, is_skip_command
 
 
 class ApplicationOrganizationForm(ApplicationForm):
+    ORGANIZATION_NAME_MAX_LENGTH = 200
+    CAR_NUMBER_MAX_LENGTH = 10
+    CAR_INFO_MAX_LENGTH = 50
+
     def __init__(self):
         super().__init__()
         self.organization_name = None
@@ -41,6 +46,7 @@ class ApplicationOrganizationForm(ApplicationForm):
 
 
 class Passenger:
+    FULL_NAME_MAX_LENGTH = 100
 
     def __init__(self, full_name):
         self.full_name = full_name
@@ -99,6 +105,11 @@ def reason(update, context):
     message_text = update.message.text
     if is_cancel_command(message_text):
         return cancel(update, context)
+    if exceeds_max_length(message_text, ApplicationOrganizationForm.REASON_MAX_LENGTH):
+        update.message.reply_text(
+            'Описывая причину вы превысили допустимое количество символов (не более {} символов)'.format(
+                ApplicationForm.REASON_MAX_LENGTH))
+        return REASON
 
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].reason = message_text
 
@@ -113,6 +124,11 @@ def organization_name(update, context):
     message_text = update.message.text
     if is_cancel_command(message_text):
         return cancel(update, context)
+    if exceeds_max_length(message_text, ApplicationOrganizationForm.ORGANIZATION_NAME_MAX_LENGTH):
+        update.message.reply_text(
+            'Если название Вашей организации превышает {} символов, то напишите его в краткой форме.'.format(
+                ApplicationOrganizationForm.ORGANIZATION_NAME_MAX_LENGTH))
+        return ORGANIZATION_NAME
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].organization_name = message_text
 
     user = update.message.from_user
@@ -138,7 +154,7 @@ def organization_tin(update, context):
     user = update.message.from_user
     logging.info("Organization tin of %s (id = %s): %s", user.first_name, user.id, message_text)
 
-    update.message.reply_text('Хорошо, теперь введита номер Вашей машины', )
+    update.message.reply_text('Хорошо, теперь введите номер Вашей машины', )
     return CAR_NUMBER
 
 
@@ -146,6 +162,10 @@ def car_number(update, context):
     message_text = update.message.text
     if is_cancel_command(message_text):
         return cancel(update, context)
+    if exceeds_max_length(message_text, ApplicationOrganizationForm.CAR_NUMBER_MAX_LENGTH):
+        update.message.reply_text(
+            'Номер машины должен быть в пределах {} символов'.format(ApplicationOrganizationForm.CAR_NUMBER_MAX_LENGTH))
+        return CAR_NUMBER
 
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].car_number = message_text
 
@@ -160,6 +180,11 @@ def car_information(update, context):
     message_text = update.message.text
     if is_cancel_command(message_text):
         return cancel(update, context)
+    if exceeds_max_length(message_text, ApplicationOrganizationForm.CAR_INFO_MAX_LENGTH):
+        update.message.reply_text(
+            'Если марка и модель Вашей машины превышает {} символов, то напишите их в краткой форме'.format(
+                ApplicationOrganizationForm.CAR_INFO_MAX_LENGTH))
+        return CAR_INFORMATION
 
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].car_info = message_text
 
@@ -179,6 +204,10 @@ def passenger_name(update, context):
         return cancel(update, context)
     if is_skip_command(message_text):
         return skip_passengers(update, context)
+    if exceeds_max_length(message_text, Passenger.FULL_NAME_MAX_LENGTH):
+        update.message.reply_text('Если ФИО пассажира превышает {} символов, то напишите его сокращенно'.format(
+            Passenger.FULL_NAME_MAX_LENGTH))
+        return PASSENGERS_NAME
 
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].passengers.append(Passenger(message_text))
 
@@ -225,7 +254,10 @@ def application_start_location(update, context):
     message_text = update.message.text
     if is_cancel_command(message_text):
         return cancel(update, context)
-
+    if exceeds_max_length(message_text, ApplicationForm.LOCATION_MAX_LENGTH):
+        update.message.reply_text(
+            'Пожалуйста напишите адрес в пределах {} символов'.format(ApplicationForm.LOCATION_MAX_LENGTH))
+        return START_LOCATION
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].start_location = message_text
 
     user = update.message.from_user
@@ -239,7 +271,10 @@ def destination(update, context):
     message_text = update.message.text
     if is_cancel_command(message_text):
         return cancel(update, context)
-
+    if exceeds_max_length(message_text, ApplicationForm.LOCATION_MAX_LENGTH):
+        update.message.reply_text(
+            'Пожалуйста напишите адрес в пределах {} символов'.format(ApplicationForm.LOCATION_MAX_LENGTH))
+        return DESTINATION
     context.user_data[USER_DATA_APPLICATION_ORGANIZATION_FORM].destination = message_text
 
     user = update.message.from_user

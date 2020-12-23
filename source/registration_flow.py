@@ -5,9 +5,13 @@ from telegram.ext import ConversationHandler, CommandHandler, MessageHandler, Fi
 
 from db_operations import save_user, user_exists, update_user
 from settings import USER_DATA_REGISTRATION_FORM
+from utilities import is_cancel_command, exceeds_max_length
 
 
 class RegistrationForm:
+    PIN_LENGTH = 14
+    FULL_NAME_MAX_LENGTH = 50
+
     def __init__(self):
         self.pin = None
         self.full_name = None
@@ -48,9 +52,12 @@ def start_registration(update, context):
 
 def full_name(update, context):
     message_text = update.message.text
-    if message_text == '/cancel':
+    if is_cancel_command(message_text):
         return cancel(update, context)
-
+    if exceeds_max_length(message_text, RegistrationForm.FULL_NAME_MAX_LENGTH):
+        update.message.reply_text(
+            'Если Ваше ФИО длиннее {} символов, то напишите его сокращённо'.format(RegistrationForm.FULL_NAME_MAX_LENGTH))
+        return FULL_NAME
     context.user_data[USER_DATA_REGISTRATION_FORM].full_name = message_text
 
     user = update.message.from_user
@@ -68,7 +75,7 @@ def pin(update, context):
     if message_text == '/cancel':
         return cancel(update, context)
     if len(message_text) != 14:
-        update.message.reply_text('Персональный номер должен быть длиной 14 символов. Попробуйте ещё раз')
+        update.message.reply_text('Персональный номер должен быть длиной 14 цифр. Попробуйте ещё раз')
         return PIN
     if not message_text.isnumeric():
         update.message.reply_text('Ваш персональный номер содержит недопустимые символы. Попробуйте ещё раз ')

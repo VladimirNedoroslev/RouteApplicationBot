@@ -20,12 +20,13 @@ CAR_STATE_NUMBER_REQUEST_FIELD = 'carStateNumber'
 CAR_INFORMATION_REQUEST_FIELD = 'carInformation'
 PASSENGERS_REQUEST_FIELD = 'passengersList'
 
+REQUEST_HEADERS = {'Content-type': 'application/json'}
+
 
 def send_organization_application_and_get_response(user_id: str, application):
     json_body = json.dumps(get_application_organization_query_body(user_id, application))
-    headers = {'Content-type': "application/json"}
     logging.info('sending organization_application({}) to {}'.format(json_body, API_ADDRESS))
-    response = requests.post(API_ADDRESS, data=json_body, headers=headers)
+    response = requests.post(API_ADDRESS, data=json_body, headers=REQUEST_HEADERS)
     logging.info(
         'response: status_code = {}, content = {}'.format(response.status_code, response.content.decode("utf-8")))
     return response
@@ -33,9 +34,8 @@ def send_organization_application_and_get_response(user_id: str, application):
 
 def send_application_and_get_response(user_id: str, application):
     json_body = json.dumps(get_application_query_body(user_id, application))
-    headers = {'Content-type': "application/json"}
     logging.info('sending application({}) to {}'.format(json_body, API_ADDRESS))
-    response = requests.post(API_ADDRESS, data=json_body, headers=headers)
+    response = requests.post(API_ADDRESS, data=json_body, headers=REQUEST_HEADERS)
     logging.info(
         'response: status_code = {}, content = {}'.format(response.status_code, response.content.decode("utf-8")))
     return response
