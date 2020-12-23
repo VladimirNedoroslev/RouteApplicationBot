@@ -10,7 +10,7 @@ LOG_TIME_FORMAT = '%d/%m/%Y %H:%M:%S'
 
 API_ADDRESS = 'https://ml.tunduk.kg/Applications/Create'
 
-CHECK_RESPONSE_REGEX = r'^(да|нет|da|net)$'
+CHECK_RESPONSE_REGEX = r'^(да|нет|da|net|ооба|ooba|жок|jok)$'
 
 TELEGRAM_BOT_TOKEN = ''
 
@@ -29,12 +29,3 @@ USER_DATA_REGISTRATION_FORM = 'registration_form'
 USER_DATA_APPLICATION_FORM = 'application_form'
 USER_DATA_APPLICATION_ORGANIZATION_FORM = 'application_organization_form'
 USER_DATA_PASSENGERS = 'passengers'
-
-REASONS = [["Перевозка лекарственных средств"],
-           ["Оказание медицинских услуг"],
-           ["Перевозка товаров первой необходимости"],
-           ["Транспортировка граждан"],
-           ["Осуществление охранных функций"],
-           ["Коммунальные услуги"],
-           ["Личные дела"],
-           ]
