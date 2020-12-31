@@ -21,7 +21,7 @@ from db_operations import user_exists
 from qr_coder import get_qrcode_from_string
 from settings import USER_DATA_APPLICATION_ORGANIZATION_FORM, TELEGRAM_BOT_TOKEN, CHECK_RESPONSE_REGEX, \
     CANCEL_COMMAND, SKIP_COMMAND, CREATE_ORGANIZATION_APPLICATION_COMMAND
-from utilities import is_cancel_command, exceeds_max_length, is_skip_command
+from utilities import is_cancel_command, exceeds_max_length, is_skip_command, set_language_dict_for_user
 
 REASON = 1
 
@@ -44,6 +44,7 @@ CHECK_APPLICATION = 12
 
 
 def create_application(update, context):
+    set_language_dict_for_user(context)
     user_id = str(update.message.from_user.id)
     if user_exists(user_id):
         user = update.message.from_user

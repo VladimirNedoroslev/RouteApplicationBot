@@ -26,6 +26,7 @@ def start(update, context):
 
 
 def commands(update, context):
+    set_language_dict_for_user(context)
     update.message.reply_text(context.user_data['lang'][COMMANDS], reply_markup=ReplyKeyboardRemove())
 
 
@@ -49,7 +50,7 @@ def handle_change_lang(update, context):
     if message_text == 'Русский':
         set_language_dict_for_user(context, 'ru')
         update.message.reply_text(context.user_data['lang'][LANGUAGE_CHOSEN])
-    if message_text == 'Кыргызча':
+    elif message_text == 'Кыргызча':
         set_language_dict_for_user(context, 'kg')
         update.message.reply_text(context.user_data['lang'][LANGUAGE_CHOSEN])
     else:
@@ -58,10 +59,12 @@ def handle_change_lang(update, context):
 
 
 def help(update, context):
+    set_language_dict_for_user(context)
     update.message.reply_text(context.user_data['lang'][BOT_HELP])
 
 
 def help_video(update, context):
+    set_language_dict_for_user(context)
     update.message.reply_text(context.user_data['lang'][BOT_VIDEO_HELP])
 
 
