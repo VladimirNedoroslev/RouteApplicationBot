@@ -12,7 +12,7 @@ API_ADDRESS = 'https://ml.tunduk.kg/Applications/Create'
 
 CHECK_RESPONSE_REGEX = r'^(да|нет|da|net|ооба|ooba|жок|jok)$'
 
-TELEGRAM_BOT_TOKEN = '1464220430:AAFh8gbv7hk8teZJB8U3hkYRSs_akwXvShs'
+TELEGRAM_BOT_TOKEN = ''
 
 HELP_COMMAND = 'help'
 HELP_VIDEO_COMMAND = 'help_video'
